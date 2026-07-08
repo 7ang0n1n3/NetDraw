@@ -2,6 +2,7 @@
 
 ## 2026-07-08
 
+- Added Docker palette section with Docker, Container, Image, Volume, Network, and Port items.
 - Added light/dark mode toggle in the top toolbar.
 - Made SVG-rendered nodes, labels, edge chips, zones, handles, and hint/editor overlays theme-aware.
 - Added browser-local diagram restore on startup, with clear-canvas fallback when no valid save exists.
@@ -14,4 +15,3 @@
 - Fixed duplicated swimlanes sharing lane arrays with the original.
 - Fixed GIF export selection restoration after export failures.
 - Added README and changelog documentation.
-

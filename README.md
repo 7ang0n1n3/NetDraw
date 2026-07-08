@@ -16,7 +16,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 
 ## Features
 
-- Drag network, server, endpoint, people, place, process, and threat objects onto the canvas.
+- Drag network, server, endpoint, people, Docker, place, process, and threat objects onto the canvas.
 - Connect nodes with styled links, labels, arrows, animated traffic, and sneakernet paths.
 - Create zones and swimlanes for network segments and process lanes.
 - Edit labels, metadata, disposition, effects, colors, lane names, and edge styles from the properties panel.
