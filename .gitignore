@@ -1,0 +1,11 @@
+# Local backups and workspace metadata
+backups/
+.agents/
+.codex/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
