@@ -2,6 +2,8 @@
 
 ## 2026-07-08
 
+- Added bottom page tabs for multi-page diagrams, including add, rename, switch, and delete page actions.
+- Changed JSON save/load to use one portable document file containing all pages, while keeping old single-page JSON imports compatible.
 - Added Docker palette section with Docker, Container, Image, Volume, Network, and Port items.
 - Added light/dark mode toggle in the top toolbar.
 - Made SVG-rendered nodes, labels, edge chips, zones, handles, and hint/editor overlays theme-aware.

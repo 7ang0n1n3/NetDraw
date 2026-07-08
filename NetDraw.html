@@ -159,11 +159,30 @@
 
   /* ---------- hint bar ---------- */
   #hintbar{
-    position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+    position:absolute; bottom:52px; left:50%; transform:translateX(-50%);
     background:var(--hint-bg); border:1px solid var(--border); border-radius:99px;
     padding:6px 16px; font-size:11px; color:var(--faint); pointer-events:none; white-space:nowrap;
   }
   #hintbar b{color:var(--muted); font-weight:600;}
+
+  /* ---------- pages ---------- */
+  #pagebar{
+    position:absolute; left:0; right:0; bottom:0; height:40px; z-index:45;
+    display:flex; align-items:center; gap:6px; padding:6px 10px;
+    background:var(--panel); border-top:1px solid var(--border);
+  }
+  #pageTabs{display:flex; align-items:center; gap:5px; min-width:0; overflow-x:auto; scrollbar-width:thin;}
+  #pageTabs::-webkit-scrollbar{height:6px;}
+  #pageTabs::-webkit-scrollbar-thumb{background:var(--scroll-thumb); border-radius:4px;}
+  .pagetab{
+    max-width:180px; min-width:70px; height:28px; padding:0 9px;
+    background:var(--panel2); border:1px solid var(--border); border-radius:7px;
+    color:var(--muted); font-weight:600; justify-content:flex-start;
+  }
+  .pagetab.active{background:var(--button-active); border-color:var(--border2); color:var(--accent);}
+  .pagetab span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #pageAdd{flex:0 0 28px; height:28px; min-width:28px; padding:0; background:var(--panel2); border:1px solid var(--border);}
+  #pageDelete{flex:0 0 28px; height:28px; min-width:28px; padding:0;}
 
   /* ---------- floating label editor ---------- */
   #labelEditor{
@@ -346,6 +365,13 @@
           </div>
         </div>
       </div>
+      <div id="pagebar">
+        <div id="pageTabs"></div>
+        <button id="pageAdd" title="Add page">+</button>
+        <button id="pageDelete" title="Delete current page">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M9 6V4h6v2M7 6l1 14h8l1-14M10 10v6M14 10v6"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -361,6 +387,7 @@
 const NW = 104, NH = 74;          // node card size
 const GRID = 26, SNAP = 13;       // grid spacing / snap step
 const LS_KEY = "netdraw.doc.v1";
+const DOC_VERSION = 2;
 const THEME_KEY = "netdraw.theme.v1";
 const PALETTE_KEY = "netdraw.palette.v1";
 const THEMES = {
@@ -627,6 +654,8 @@ const SWATCHES = ["#38bdf8","#60a5fa","#a78bfa","#c084fc","#f472b6","#f87171","#
 /* ---------- state ---------- */
 let state = {nodes:[], edges:[], zones:[]};
 let view = {x:0, y:0, k:1};
+let pages = [];
+let activePageId = null;
 let tool = "select";
 let selection = new Set();        // node ids and edge ids
 let undoStack = [], redoStack = [], lastSnap = "";
@@ -657,7 +686,13 @@ function snap(v){ return snapOn ? Math.round(v / SNAP) * SNAP : v; }
 function inZone(n, z){ return n.x > z.x && n.x < z.x + z.w && n.y > z.y && n.y < z.y + z.h; }
 function cleanId(v, p){ return (typeof v === "string" && v.trim()) ? v : uid(p); }
 function finiteNum(v){ return typeof v === "number" && Number.isFinite(v); }
-function normalizeDoc(doc){
+function blankState(){ return {nodes:[], edges:[], zones:[]}; }
+function blankView(){ return {x:0, y:0, k:1}; }
+function cleanPageName(v, fallback){
+  const s = typeof v === "string" ? v.trim() : "";
+  return s || fallback;
+}
+function normalizeState(doc){
   if(!doc || !Array.isArray(doc.nodes) || !Array.isArray(doc.edges)) throw new Error("bad document");
   const seen = new Set();
   const nodes = doc.nodes.map(n => {
@@ -706,6 +741,119 @@ function normalizeDoc(doc){
     return out;
   });
   return {nodes, edges, zones};
+}
+function normalizeView(v){
+  return v && finiteNum(v.x) && finiteNum(v.y) && finiteNum(v.k)
+    ? {x:v.x, y:v.y, k:clamp(v.k, 0.15, 3.5)}
+    : blankView();
+}
+function makePage(name, pageState, pageView){
+  return {id:uid("p"), name, state:pageState || blankState(), view:pageView || blankView()};
+}
+function normalizeFileDoc(doc){
+  if(doc && Array.isArray(doc.pages)){
+    const seen = new Set();
+    const out = doc.pages.map((p, i) => {
+      const id = cleanId(p && p.id, "p");
+      if(seen.has(id)) throw new Error("duplicate page id");
+      seen.add(id);
+      return {
+        id,
+        name:cleanPageName(p && p.name, "Page " + (i + 1)),
+        state:normalizeState(p && p.state),
+        view:normalizeView(p && p.view)
+      };
+    });
+    if(!out.length) throw new Error("empty document");
+    const active = out.some(p => p.id === doc.activePageId) ? doc.activePageId : out[0].id;
+    return {version:DOC_VERSION, pages:out, activePageId:active};
+  }
+  const p = makePage("Page 1", normalizeState(doc), blankView());
+  return {version:DOC_VERSION, pages:[p], activePageId:p.id};
+}
+function activePage(){ return pages.find(p => p.id === activePageId) || pages[0] || null; }
+function persistCurrentPage(){
+  const p = activePage();
+  if(!p) return;
+  p.state = state;
+  p.view = {...view};
+}
+function serializeDoc(){
+  persistCurrentPage();
+  return {
+    version:DOC_VERSION,
+    activePageId,
+    pages:pages.map(p => ({
+      id:p.id,
+      name:p.name,
+      state:p.state,
+      view:p.view || blankView()
+    }))
+  };
+}
+function setActivePage(id, opts = {}){
+  const next = pages.find(p => p.id === id);
+  if(!next || next.id === activePageId) return;
+  if(!opts.skipPersist) persistCurrentPage();
+  activePageId = next.id;
+  state = next.state;
+  view = normalizeView(next.view);
+  selection.clear();
+  pendingFrom = null;
+  hideEditor();
+  clearTemp();
+  undoStack = [];
+  redoStack = [];
+  lastSnap = serialize();
+  renderAll();
+  applyView();
+  renderPageTabs();
+  if(!opts.silent) saveSoon();
+}
+function addPage(){
+  persistCurrentPage();
+  const p = makePage("Page " + (pages.length + 1), blankState(), blankView());
+  pages.push(p);
+  setActivePage(p.id);
+  toast("Page added");
+}
+function renamePage(id){
+  const p = pages.find(x => x.id === id);
+  if(!p) return;
+  const name = prompt("Page name", p.name);
+  if(name === null) return;
+  p.name = cleanPageName(name, p.name);
+  renderPageTabs();
+  saveSoon();
+}
+function deleteCurrentPage(){
+  if(pages.length <= 1){ toast("A document needs at least one page"); return; }
+  const p = activePage();
+  if(!p) return;
+  if(!confirm(`Delete "${p.name}"?`)) return;
+  const idx = pages.findIndex(x => x.id === p.id);
+  pages.splice(idx, 1);
+  activePageId = null;
+  setActivePage((pages[Math.max(0, idx - 1)] || pages[0]).id, {skipPersist:true});
+  toast("Page deleted");
+}
+function renderPageTabs(){
+  const root = $("pageTabs");
+  if(!root) return;
+  root.innerHTML = "";
+  pages.forEach(p => {
+    const b = document.createElement("button");
+    b.className = "pagetab" + (p.id === activePageId ? " active" : "");
+    b.type = "button";
+    b.title = "Switch to " + p.name + " (double-click to rename)";
+    b.dataset.page = p.id;
+    b.innerHTML = `<span>${esc(p.name)}</span>`;
+    b.addEventListener("click", () => setActivePage(p.id));
+    b.addEventListener("dblclick", e => { e.stopPropagation(); renamePage(p.id); });
+    root.appendChild(b);
+  });
+  const del = $("pageDelete");
+  if(del) del.disabled = pages.length <= 1;
 }
 
 /* Lane snap: inside a swimlane, pull the cross-axis coordinate onto the nearest
@@ -1179,7 +1327,7 @@ let saveTimer = null;
 function saveSoon(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({state, view})); }catch(_){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(serializeDoc())); }catch(_){}
   }, 300);
 }
 function updateToolbar(){
@@ -2254,7 +2402,7 @@ async function startRecording(audioMode, musicFile, fmt){
 function stopRecording(){ if(rec){ rec.stop(); rec = null; } }
 
 function exportJSON(){
-  download("network-diagram.json", new Blob([JSON.stringify(state, null, 2)], {type:"application/json"}));
+  download("network-diagram.json", new Blob([JSON.stringify(serializeDoc(), null, 2)], {type:"application/json"}));
   toast("Diagram saved as JSON");
 }
 function importJSON(file){
@@ -2262,12 +2410,18 @@ function importJSON(file){
   rd.onload = () => {
     try{
       const doc = JSON.parse(rd.result);
-      const nextState = normalizeDoc(doc);
-      state = nextState;
+      const nextDoc = normalizeFileDoc(doc);
+      pages = nextDoc.pages;
+      activePageId = nextDoc.activePageId || pages[0].id;
+      state = activePage().state;
+      view = normalizeView(activePage().view);
       selection.clear();
-      commit();
+      undoStack = []; redoStack = [];
+      lastSnap = serialize();
+      renderPageTabs();
       renderAll();
-      zoomFit();
+      applyView();
+      saveSoon();
       toast("Diagram loaded");
     }catch(_){ toast("Could not read that file — not a NetDraw JSON"); }
   };
@@ -2312,10 +2466,14 @@ $("recStart").onclick = () => {
 $("btnJSON").onclick = exportJSON;
 $("btnOpen").onclick = () => $("fileInput").click();
 $("fileInput").addEventListener("change", e => { if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ""; });
+$("pageAdd").onclick = addPage;
+$("pageDelete").onclick = deleteCurrentPage;
 $("btnClear").onclick = () => {
   if(!state.nodes.length && !state.edges.length && !state.zones.length) return;
-  if(confirm("Clear the entire canvas? (You can still undo.)")){
-    state = {nodes:[], edges:[], zones:[]};
+  const p = activePage();
+  if(confirm(`Clear "${p ? p.name : "current page"}"? (You can still undo.)`)){
+    state = blankState();
+    persistCurrentPage();
     selection.clear();
     commit();
     renderAll();
@@ -2372,25 +2530,36 @@ function sampleState(){
 function boot(){
   buildPalette();
   try{ applyTheme(localStorage.getItem(THEME_KEY)); }catch(_){ applyTheme("dark"); }
-  state = {nodes:[], edges:[], zones:[]};
-  view = {x:0, y:0, k:1};
+  pages = [makePage("Page 1", blankState(), blankView())];
+  activePageId = pages[0].id;
+  state = pages[0].state;
+  view = pages[0].view;
   try{
     const raw = localStorage.getItem(LS_KEY);
     if(raw){
       const doc = JSON.parse(raw);
+      let nextDoc;
       if(doc.state && Array.isArray(doc.state.nodes)){
-        state = normalizeDoc(doc.state);
-        if(doc.view && Number.isFinite(doc.view.x) && Number.isFinite(doc.view.y) && Number.isFinite(doc.view.k))
-          view = doc.view;
+        const p = makePage("Page 1", normalizeState(doc.state), normalizeView(doc.view));
+        nextDoc = {pages:[p], activePageId:p.id};
+      } else {
+        nextDoc = normalizeFileDoc(doc);
       }
+      pages = nextDoc.pages;
+      activePageId = nextDoc.activePageId || pages[0].id;
+      state = activePage().state;
+      view = normalizeView(activePage().view);
     }
   }catch(_){
-    state = {nodes:[], edges:[], zones:[]};
-    view = {x:0, y:0, k:1};
+    pages = [makePage("Page 1", blankState(), blankView())];
+    activePageId = pages[0].id;
+    state = pages[0].state;
+    view = pages[0].view;
   }
   selection.clear();
   undoStack = []; redoStack = [];
   lastSnap = serialize();
+  renderPageTabs();
   renderAll();
   applyView();
   setTool("select");
