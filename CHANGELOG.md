@@ -2,6 +2,8 @@
 
 ## 2026-08-05
 
+- Started versioning at `v1.0.0` and displayed the version next to the NetDraw name in the top-left header.
+- Added connection endpoint points so lines can attach to the top, right, bottom, or left side of each object.
 - Added connection arrow options for start, end, and two-way directions.
 - Changed animated traffic flow so start and end arrow connections flow toward the arrow.
 - Added connection route choices: curved, straight, and elbow.

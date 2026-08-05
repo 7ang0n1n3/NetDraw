@@ -238,7 +238,7 @@
         <circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/>
         <path d="M7 7.5 10.5 16M17 7.5 13.5 16M7.6 6h8.8"/>
       </svg>
-      NetDraw <span class="sub">network diagrams</span>
+      NetDraw <span class="sub">v1.0.0</span>
     </div>
 
     <div class="tgroup">
@@ -699,6 +699,8 @@ function cleanPageName(v, fallback){
   const s = typeof v === "string" ? v.trim() : "";
   return s || fallback;
 }
+const PORT_SIDES = ["top", "right", "bottom", "left"];
+function cleanPort(v){ return PORT_SIDES.includes(v) ? v : ""; }
 function normalizeState(doc){
   if(!doc || !Array.isArray(doc.nodes) || !Array.isArray(doc.edges)) throw new Error("bad document");
   const seen = new Set();
@@ -724,6 +726,8 @@ function normalizeState(doc){
       label: typeof e.label === "string" ? e.label : "",
       style: ["solid","dashed","dotted","sneakernet"].includes(e.style) ? e.style : "solid",
       route: ["curved","straight","elbow"].includes(e.route) ? e.route : "curved",
+      fromPort: cleanPort(e.fromPort),
+      toPort: cleanPort(e.toPort),
       bend,
       anim: !!e.anim,
       arrows: ["none","start","end","both"].includes(e.arrows) ? e.arrows : "none"
@@ -1071,14 +1075,39 @@ function renderNode(n){
   }
   // connection ports
   const ports = el("g", {class:"ports"});
-  [[W/2,0],[W,H/2],[W/2,H],[0,H/2]].forEach(([px,py]) => {
-    ports.appendChild(el("circle", {class:"port", "data-port":n.id, cx:px, cy:py, r:5, fill:tc("chipBg"), stroke:acc, "stroke-width":1.6}));
+  [
+    ["top", W/2, 0],
+    ["right", W, H/2],
+    ["bottom", W/2, H],
+    ["left", 0, H/2]
+  ].forEach(([side, px, py]) => {
+    ports.appendChild(el("circle", {class:"port", "data-port":n.id, "data-port-side":side, cx:px, cy:py, r:5, fill:tc("chipBg"), stroke:acc, "stroke-width":1.6}));
   });
   g.appendChild(ports);
   return g;
 }
 
+function portPoint(n, side){
+  const W = nodeW(n), H = nodeH(n);
+  switch(side){
+    case "top": return {x:n.x, y:n.y - H/2};
+    case "right": return {x:n.x + W/2, y:n.y};
+    case "bottom": return {x:n.x, y:n.y + H/2};
+    case "left": return {x:n.x - W/2, y:n.y};
+    default: return null;
+  }
+}
+function nearestPortSide(n, p){
+  let best = "right", bestDist = Infinity;
+  for(const side of PORT_SIDES){
+    const pp = portPoint(n, side);
+    const dist = Math.hypot(p.x - pp.x, p.y - pp.y);
+    if(dist < bestDist){ best = side; bestDist = dist; }
+  }
+  return best;
+}
 function anchor(n, toward){
+  if(!n.id) return {x:n.x, y:n.y};
   const dx = toward.x - n.x, dy = toward.y - n.y;
   if(dx === 0 && dy === 0) return {x:n.x, y:n.y};
   const hw = (n.id ? nodeW(n) : NW)/2 + 5, hh = (n.id ? nodeH(n) : NH)/2 + 5;
@@ -1086,7 +1115,8 @@ function anchor(n, toward){
   return {x: n.x + dx * s, y: n.y + dy * s};
 }
 function edgeGeom(a, b, route = "curved", edge = null){
-  const p1 = anchor(a, b), p2 = anchor(b, a);
+  const p1 = (edge && edge.fromPort && portPoint(a, edge.fromPort)) || anchor(a, b);
+  const p2 = (edge && edge.toPort && portPoint(b, edge.toPort)) || anchor(b, a);
   const dx = p2.x - p1.x, dy = p2.y - p1.y;
   if(route === "straight"){
     return {
@@ -1386,10 +1416,16 @@ function addNode(type, x, y, label){
   renderAll();
   return n;
 }
-function addEdge(aId, bId){
+function addEdge(aId, bId, fromPort = "", toPort = ""){
   if(aId === bId) return;
-  if(state.edges.some(e => (e.a === aId && e.b === bId) || (e.a === bId && e.b === aId))) return;
-  const e = {id:uid("e"), a:aId, b:bId, label:"", style:"solid", route:"curved", anim:false, arrows:"none"};
+  fromPort = cleanPort(fromPort);
+  toPort = cleanPort(toPort);
+  if(state.edges.some(e =>
+    (e.a === aId && e.b === bId && cleanPort(e.fromPort) === fromPort && cleanPort(e.toPort) === toPort) ||
+    (e.a === bId && e.b === aId && cleanPort(e.fromPort) === toPort && cleanPort(e.toPort) === fromPort)
+  )) return;
+  const e = {id:uid("e"), a:aId, b:bId, label:"", style:"solid", route:"curved",
+    fromPort, toPort, anim:false, arrows:"none"};
   state.edges.push(e);
   commit();
   selection = new Set([e.id]);
@@ -1531,10 +1567,10 @@ function setTool(t){
 
 /* ---------- temp edge / marquee ---------- */
 function clearTemp(){ tempLayer.innerHTML = ""; uiLayer.innerHTML = ""; markLinkTarget(null); }
-function drawTempEdge(fromNode, wp){
+function drawTempEdge(fromNode, wp, fromPort = ""){
   tempLayer.innerHTML = "";
   const fake = {x:wp.x, y:wp.y};
-  const geo = edgeGeom(fromNode, fake);
+  const geo = edgeGeom(fromNode, fake, "curved", {fromPort});
   tempLayer.appendChild(el("path", {d:geo.d, fill:"none", stroke:"#7dd3fc", "stroke-width":2,
     "stroke-dasharray":"6 6", "stroke-linecap":"round", opacity:.9}));
   tempLayer.appendChild(el("circle", {cx:wp.x, cy:wp.y, r:4, fill:"#7dd3fc"}));
@@ -1554,6 +1590,12 @@ function nodeUnderPointer(e){
   const t = document.elementFromPoint(e.clientX, e.clientY);
   const g = t && t.closest ? t.closest("g[data-node]") : null;
   return g ? g.getAttribute("data-node") : null;
+}
+function portUnderPointer(e){
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const p = t && t.closest ? t.closest("[data-port]") : null;
+  if(!p) return null;
+  return {nodeId:p.getAttribute("data-port"), side:cleanPort(p.getAttribute("data-port-side"))};
 }
 
 /* ---------- canvas pointer handling ---------- */
@@ -1598,17 +1640,25 @@ svg.addEventListener("pointerdown", e => {
 
   // pending click-click connect
   if(pendingFrom){
-    const src = nodeById(pendingFrom);
+    const srcId = typeof pendingFrom === "string" ? pendingFrom : pendingFrom.nodeId;
+    const srcPort = typeof pendingFrom === "string" ? "" : pendingFrom.side;
+    const src = nodeById(srcId);
     pendingFrom = null;
     clearTemp();
-    if(nodeG && src) addEdge(src.id, nodeG.getAttribute("data-node"));
+    if(nodeG && src){
+      const toId = nodeG.getAttribute("data-node");
+      const toPort = portEl && portEl.getAttribute("data-port") === toId
+        ? cleanPort(portEl.getAttribute("data-port-side"))
+        : nearestPortSide(nodeById(toId), wp);
+      addEdge(src.id, toId, srcPort, toPort);
+    }
     return;
   }
 
   if(portEl){
     // drag out a new connection from a port
     const id = portEl.getAttribute("data-port");
-    drag = {kind:"link", from:id};
+    drag = {kind:"link", from:id, fromPort:cleanPort(portEl.getAttribute("data-port-side"))};
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -1630,7 +1680,7 @@ svg.addEventListener("pointerdown", e => {
     const id = nodeG.getAttribute("data-node");
     if(isDoubleClick("n:" + id, e)){ openEditor({kind:"node", id}); return; }
     if(tool === "connect"){
-      drag = {kind:"link", from:id, clickClick:true, sx:e.clientX, sy:e.clientY};
+      drag = {kind:"link", from:id, fromPort:nearestPortSide(nodeById(id), wp), clickClick:true, sx:e.clientX, sy:e.clientY};
       svg.setPointerCapture(e.pointerId);
       return;
     }
@@ -1702,8 +1752,8 @@ svg.addEventListener("pointerdown", e => {
 
 window.addEventListener("pointermove", e => {
   if(pendingFrom){
-    const src = nodeById(pendingFrom);
-    if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY));
+    const src = nodeById(typeof pendingFrom === "string" ? pendingFrom : pendingFrom.nodeId);
+    if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY), typeof pendingFrom === "string" ? "" : pendingFrom.side);
     return;
   }
   if(!drag) return;
@@ -1732,7 +1782,7 @@ window.addEventListener("pointermove", e => {
   }
   else if(drag.kind === "link"){
     const src = nodeById(drag.from);
-    if(src) drawTempEdge(src, wp);
+    if(src) drawTempEdge(src, wp, drag.fromPort);
     const over = nodeUnderPointer(e);
     markLinkTarget(over && over !== drag.from ? over : null);
   }
@@ -1806,15 +1856,18 @@ window.addEventListener("pointerup", e => {
     }
   }
   else if(d.kind === "link"){
+    const port = portUnderPointer(e);
     const over = nodeUnderPointer(e);
     clearTemp();
     if(over && over !== d.from){
-      addEdge(d.from, over);
+      const toNode = nodeById(over);
+      const toPort = port && port.nodeId === over ? port.side : nearestPortSide(toNode, toWorld(e.clientX, e.clientY));
+      addEdge(d.from, over, d.fromPort, toPort);
     } else if(d.clickClick && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6){
       // simple click in connect mode → arm click-click linking
-      pendingFrom = d.from;
-      const src = nodeById(pendingFrom);
-      if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY));
+      pendingFrom = {nodeId:d.from, side:d.fromPort};
+      const src = nodeById(pendingFrom.nodeId);
+      if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY), pendingFrom.side);
     } else {
       renderAll();
     }
@@ -2096,6 +2149,22 @@ function updateProps(){
           <option value="straight" ${ed.route === "straight" ? "selected" : ""}>Straight</option>
           <option value="elbow" ${ed.route === "elbow" ? "selected" : ""}>Elbow</option>
         </select></div>
+      <div class="row"><label>From point</label>
+        <select id="pFromPort">
+          <option value="" ${!ed.fromPort ? "selected" : ""}>Auto</option>
+          <option value="top" ${ed.fromPort === "top" ? "selected" : ""}>Top</option>
+          <option value="right" ${ed.fromPort === "right" ? "selected" : ""}>Right</option>
+          <option value="bottom" ${ed.fromPort === "bottom" ? "selected" : ""}>Bottom</option>
+          <option value="left" ${ed.fromPort === "left" ? "selected" : ""}>Left</option>
+        </select></div>
+      <div class="row"><label>To point</label>
+        <select id="pToPort">
+          <option value="" ${!ed.toPort ? "selected" : ""}>Auto</option>
+          <option value="top" ${ed.toPort === "top" ? "selected" : ""}>Top</option>
+          <option value="right" ${ed.toPort === "right" ? "selected" : ""}>Right</option>
+          <option value="bottom" ${ed.toPort === "bottom" ? "selected" : ""}>Bottom</option>
+          <option value="left" ${ed.toPort === "left" ? "selected" : ""}>Left</option>
+        </select></div>
       <div class="row"><label>Arrows</label>
         <select id="pArrows">
           <option value="none" ${ed.arrows === "none" ? "selected" : ""}>None</option>
@@ -2110,6 +2179,8 @@ function updateProps(){
     propsEl.querySelector("#pLabel").addEventListener("keydown", e => { e.stopPropagation(); if(e.key === "Enter") e.target.blur(); });
     propsEl.querySelector("#pStyle").addEventListener("change", e => { ed.style = e.target.value; commit(); renderAll(); });
     propsEl.querySelector("#pRoute").addEventListener("change", e => { ed.route = e.target.value; commit(); renderAll(); });
+    propsEl.querySelector("#pFromPort").addEventListener("change", e => { ed.fromPort = cleanPort(e.target.value); commit(); renderAll(); });
+    propsEl.querySelector("#pToPort").addEventListener("change", e => { ed.toPort = cleanPort(e.target.value); commit(); renderAll(); });
     propsEl.querySelector("#pArrows").addEventListener("change", e => { ed.arrows = e.target.value; commit(); renderAll(); });
     propsEl.querySelector("#pAnim").addEventListener("change", e => { ed.anim = e.target.checked; commit(); renderAll(); });
     wireOrderControls();

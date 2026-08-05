@@ -1,5 +1,7 @@
 # NetDraw
 
+Current version: `v1.0.0`
+
 NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
 
 This project is based on `mr-r3b00t.github.io/net_draw/` with enhancements.
@@ -45,9 +47,11 @@ Use the tabs along the bottom edge of the canvas to switch pages. Click `+` to a
 
 ## Connections
 
-Select a connection to edit its label, line style, route, arrow direction, and animated traffic flow from the properties panel.
+Select a connection to edit its label, line style, route, source point, destination point, arrow direction, and animated traffic flow from the properties panel.
 
 Connection routes can be `Curved`, `Straight`, or `Elbow`. Existing diagrams default to `Curved`. For `Elbow` routes, select the connection and drag the bend handles on the line to move the structured path.
+
+Connections can attach to the `Top`, `Right`, `Bottom`, or `Left` point on each object. Drag from a visible side point to another object to create a pinned connection, or change `From point` and `To point` on an existing connection.
 
 Arrow options are `None`, `Start with`, `End with`, and `Two-way`. Animated traffic flow follows the selected start or end arrow direction; two-way arrows keep the current single-line animation behavior.
 
