@@ -65,6 +65,20 @@
   }
   #palette::-webkit-scrollbar{width:8px;}
   #palette::-webkit-scrollbar-thumb{background:var(--scroll-thumb); border-radius:4px;}
+  .paletteTop{
+    position:sticky; top:-12px; z-index:3; margin:-12px -10px 12px; padding:10px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--panel); border-bottom:1px solid var(--border);
+  }
+  .paletteTop .ptitle{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:1.1px; color:var(--faint);
+    font-weight:700;
+  }
+  .paletteToggle{
+    height:27px; min-width:27px; padding:0 7px; border:1px solid var(--border);
+    background:var(--panel2); color:var(--muted);
+  }
+  .paletteToggle:hover{border-color:var(--border2);}
   .pgroup{margin-bottom:14px;}
   .phead{
     width:100%; height:auto; min-height:28px; padding:4px 6px 8px; border-radius:7px;
@@ -311,7 +325,7 @@
         <circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/>
         <path d="M7 7.5 10.5 16M17 7.5 13.5 16M7.6 6h8.8"/>
       </svg>
-      NetDraw <span class="sub">v1.1.5</span>
+      NetDraw <span class="sub">v1.1.6</span>
     </div>
 
     <div class="tgroup">
@@ -9522,8 +9536,36 @@ function reorderSelection(mode){
 /* ---------- palette ---------- */
 function buildPalette(){
   const root = $("palette");
+  root.innerHTML = "";
   let collapsed = {};
   try{ collapsed = JSON.parse(localStorage.getItem(PALETTE_KEY) || "{}"); }catch(_){}
+  const groupKeys = PALETTE_GROUPS.map(grp => grp.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+  const saveCollapsed = () => {
+    try{ localStorage.setItem(PALETTE_KEY, JSON.stringify(collapsed)); }catch(_){}
+  };
+  const top = document.createElement("div");
+  top.className = "paletteTop";
+  top.innerHTML = `<span class="ptitle">Sections</span>`;
+  const toggleAll = document.createElement("button");
+  toggleAll.className = "paletteToggle";
+  toggleAll.type = "button";
+  const syncToggleAll = () => {
+    const allCollapsed = groupKeys.every(key => collapsed[key]);
+    toggleAll.title = allCollapsed ? "Expand all sections" : "Collapse all sections";
+    toggleAll.innerHTML = allCollapsed
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/><path d="m7 5 5 5 5-5"/></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 14 5-5 5 5"/><path d="m7 19 5-5 5 5"/></svg>`;
+  };
+  toggleAll.addEventListener("click", () => {
+    const close = !groupKeys.every(key => collapsed[key]);
+    groupKeys.forEach(key => { collapsed[key] = close; });
+    root.querySelectorAll(".pgroup").forEach(d => d.classList.toggle("collapsed", close));
+    saveCollapsed();
+    syncToggleAll();
+  });
+  syncToggleAll();
+  top.appendChild(toggleAll);
+  root.appendChild(top);
   for(const grp of PALETTE_GROUPS){
     const d = document.createElement("div");
     d.className = "pgroup";
@@ -9537,7 +9579,8 @@ function buildPalette(){
     head.addEventListener("click", () => {
       d.classList.toggle("collapsed");
       collapsed[key] = d.classList.contains("collapsed");
-      try{ localStorage.setItem(PALETTE_KEY, JSON.stringify(collapsed)); }catch(_){}
+      saveCollapsed();
+      syncToggleAll();
     });
     const wrap = document.createElement("div");
     wrap.className = "pitems";

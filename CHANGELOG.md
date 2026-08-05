@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.6 - 2026-08-05
+
+- Updated the displayed NetDraw version to `v1.1.6`.
+- Added a top palette control to collapse or expand all object sections at once.
+
 ## v1.1.5 - 2026-08-05
 
 - Updated the displayed NetDraw version to `v1.1.5`.
