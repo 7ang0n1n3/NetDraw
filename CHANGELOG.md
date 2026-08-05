@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.1.5 - 2026-08-05
+
+- Updated the displayed NetDraw version to `v1.1.5`.
+- Added an A-AUTO palette section under HULFT with product-fit icons for cross-platform job scheduling, batch jobs, progress monitoring, A-AUTO/LINK, ERP jobs, carryover jobs, and 24/365 operation.
+
+## v1.1.4 - 2026-08-05
+
+- Updated the displayed NetDraw version to `v1.1.4`.
+- Added a HULFT palette section under Azure with product-fit icons for HULFT10 file transfer, management information, jobs, triggers, code conversion, ciphering, cloud storage, logs, and clustering.
+
 ## v1.1.3 - 2026-08-05
 
 - Updated the displayed NetDraw version to `v1.1.3`.

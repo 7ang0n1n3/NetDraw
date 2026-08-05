@@ -1,6 +1,6 @@
 # NetDraw
 
-Current version: `v1.1.3`
+Current version: `v1.1.5`
 
 NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
 
@@ -18,8 +18,8 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 
 ## Features
 
-- Drag network, server, endpoint, people, Docker, place, process, and threat objects onto the canvas.
-- Add AWS, Google Cloud Platform, and Azure service objects from palette sections below Docker, with service names sourced from the official provider icon packages.
+- Drag network, server, endpoint, people, Docker, HULFT, A-AUTO, place, process, and threat objects onto the canvas.
+- Add AWS, Google Cloud Platform, Azure, HULFT, and A-AUTO service objects from palette sections below Docker, with cloud service names sourced from the official provider icon packages.
 - Connect nodes with styled links, labels, structured routes, arrows, animated traffic, and sneakernet paths.
 - Create zones and swimlanes for network segments and process lanes.
 - Create multiple pages from bottom tabs; each page keeps its own canvas and view.
@@ -72,6 +72,14 @@ The Google Cloud Platform palette section sits directly under AWS and contains 2
 ## Azure
 
 The Azure palette section sits directly under Google Cloud Platform and contains 624 de-duplicated service entries from the official Microsoft Azure Architecture Icons SVG package, version 23. Each Azure object uses the official Azure SVG graphic and preserves the service name in the palette and object label.
+
+## HULFT
+
+The HULFT palette section sits directly under Azure and contains product-fit icons for HULFT10 file transfer diagrams: HULFT Server, HULFT Manager, HULFT API Gateway, Send File, Receive File, File ID, Send Management Info, Receive Management Info, Transfer Group, Host Information, Job Information, File Trigger, Format Information, Code Conversion, Cipher Option, Cloud Storage Option, Operation Log, and HULFT Cluster.
+
+## A-AUTO
+
+The A-AUTO palette section sits directly under HULFT and contains product-fit icons for A-AUTO job scheduling diagrams: A-AUTO Scheduler, Job Network, Batch Job, Schedule Date, Progress Monitor, A-AUTO Agent, A-AUTO/LINK, A-SUPERVISION Client, ERP Job, Heterogeneous Platforms, Carryover Job, and 24/365 Operation.
 
 ## Journey
 
