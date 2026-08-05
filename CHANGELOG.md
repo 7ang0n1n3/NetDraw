@@ -6,6 +6,7 @@
 - Changed animated traffic flow so start and end arrow connections flow toward the arrow.
 - Added connection route choices: curved, straight, and elbow.
 - Added draggable bend handles for selected elbow connections.
+- Added object ordering controls for selected nodes, zones, swimlanes, and connections.
 - Fixed the connection properties panel delete button.
 
 ## 2026-07-08

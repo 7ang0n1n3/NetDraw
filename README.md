@@ -51,6 +51,10 @@ Connection routes can be `Curved`, `Straight`, or `Elbow`. Existing diagrams def
 
 Arrow options are `None`, `Start with`, `End with`, and `Two-way`. Animated traffic flow follows the selected start or end arrow direction; two-way arrows keep the current single-line animation behavior.
 
+## Objects
+
+Select a node, zone, swimlane, or connection to move it backward, forward, to the back, or to the front from the properties panel. Ordering is applied inside the selected item's drawing layer.
+
 ## Keyboard Shortcuts
 
 - `V`: Select
@@ -65,6 +69,10 @@ Arrow options are `None`, `Start with`, `End with`, and `Two-way`. Animated traf
 - `Ctrl+D`: Duplicate selection
 - `Ctrl+A`: Select all
 - `Ctrl+S`: Save JSON
+- `Ctrl+[`: Move selection backward
+- `Ctrl+]`: Move selection forward
+- `Ctrl+Shift+[`: Send selection to back
+- `Ctrl+Shift+]`: Bring selection to front
 
 ## Project Layout
 

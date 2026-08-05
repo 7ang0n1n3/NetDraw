@@ -158,6 +158,9 @@
     font-size:10.5px; color:var(--muted); cursor:pointer; transition:border-color .1s;
   }
   .fxchip:hover{border-color:var(--border2); color:var(--text);}
+  .orderBtns{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .orderBtns button{background:var(--panel2); border:1px solid var(--border); justify-content:center;}
+  .orderBtns button:hover{border-color:var(--border2);}
   #props .danger{width:100%; justify-content:center; background:#3a1622; color:#fda4af; border:1px solid #58202f; margin-top:2px;}
   #props .danger:hover{background:#4c1b2b;}
 
@@ -1420,6 +1423,34 @@ function duplicateSelection(){
   selection = new Set([...clones.map(c => c.id), ...zClones.map(c => c.id)]);
   renderAll();
 }
+function reorderList(list, mode){
+  const before = list.map(x => x.id).join("|");
+  const picked = x => selection.has(x.id);
+  if(mode === "back"){
+    for(let i = 1; i < list.length; i++){
+      if(picked(list[i]) && !picked(list[i - 1])) [list[i - 1], list[i]] = [list[i], list[i - 1]];
+    }
+  } else if(mode === "forward"){
+    for(let i = list.length - 2; i >= 0; i--){
+      if(picked(list[i]) && !picked(list[i + 1])) [list[i + 1], list[i]] = [list[i], list[i + 1]];
+    }
+  } else if(mode === "toBack"){
+    list.sort((a, b) => Number(picked(b)) - Number(picked(a)));
+  } else if(mode === "toFront"){
+    list.sort((a, b) => Number(picked(a)) - Number(picked(b)));
+  }
+  return before !== list.map(x => x.id).join("|");
+}
+function reorderSelection(mode){
+  if(!selection.size) return;
+  const zonesChanged = reorderList(state.zones, mode);
+  const edgesChanged = reorderList(state.edges, mode);
+  const nodesChanged = reorderList(state.nodes, mode);
+  const changed = zonesChanged || edgesChanged || nodesChanged;
+  if(!changed) return;
+  commit();
+  renderAll();
+}
 
 /* ---------- palette ---------- */
 function buildPalette(){
@@ -1918,6 +1949,18 @@ function updateProps(){
   if(selection.size !== 1){ propsEl.style.display = "none"; return; }
   const id = [...selection][0];
   const n = nodeById(id), ed = edgeById(id), z = zoneById(id);
+  const orderControls = () => `
+      <div class="row"><label>Object order</label><div class="orderBtns">
+        <button data-order="toBack" title="Send to back">Back</button>
+        <button data-order="back" title="Move backward one step">Backward</button>
+        <button data-order="forward" title="Move forward one step">Forward</button>
+        <button data-order="toFront" title="Bring to front">Front</button>
+      </div></div>`;
+  const wireOrderControls = () => {
+    propsEl.querySelectorAll("[data-order]").forEach(btn => {
+      btn.addEventListener("click", () => reorderSelection(btn.dataset.order));
+    });
+  };
   const wireText = (sel, fn) => {
     const inp = propsEl.querySelector(sel);
     inp.addEventListener("change", e => { fn(e.target.value.trim()); commit(); renderAll(); });
@@ -1967,6 +2010,7 @@ function updateProps(){
       <div class="row"><label>Accent color</label><div class="swatches">${
         SWATCHES.map(c => `<div class="sw ${accentOf(n) === c ? "on" : ""}" data-c="${c}" style="background:${c}"></div>`).join("")
       }</div></div>
+      ${orderControls()}
       <button class="danger" id="pDelete">Delete node</button>`;
     wireText("#pLabel", v => { if(v) n.label = v; });
     for(const f of (T.fields || []))
@@ -1983,6 +2027,7 @@ function updateProps(){
       commit(); renderAll();
     }));
     propsEl.querySelectorAll(".sw").forEach(sw => sw.addEventListener("click", () => { n.accent = sw.dataset.c; commit(); renderAll(); }));
+    wireOrderControls();
     propsEl.querySelector("#pDelete").addEventListener("click", deleteSelection);
   } else if(z && z.kind === "swimlane"){
     propsEl.innerHTML = `
@@ -2001,6 +2046,7 @@ function updateProps(){
       <div class="row"><label>Color</label><div class="swatches">${
         SWATCHES.map(c => `<div class="sw ${z.color === c ? "on" : ""}" data-c="${c}" style="background:${c}"></div>`).join("")
       }</div></div>
+      ${orderControls()}
       <button class="danger" id="pDelete">Delete swimlane (keeps contents)</button>`;
     wireText("#pLabel", v => { if(v) z.label = v; });
     propsEl.querySelector("#pOrient").addEventListener("change", e => { z.orient = e.target.value; commit(); renderAll(); });
@@ -2018,6 +2064,7 @@ function updateProps(){
       commit(); renderAll();
     });
     propsEl.querySelectorAll(".sw").forEach(sw => sw.addEventListener("click", () => { z.color = sw.dataset.c; commit(); renderAll(); }));
+    wireOrderControls();
     propsEl.querySelector("#pDelete").addEventListener("click", deleteSelection);
   } else if(z){
     propsEl.innerHTML = `
@@ -2026,9 +2073,11 @@ function updateProps(){
       <div class="row"><label>Color</label><div class="swatches">${
         SWATCHES.map(c => `<div class="sw ${z.color === c ? "on" : ""}" data-c="${c}" style="background:${c}"></div>`).join("")
       }</div></div>
+      ${orderControls()}
       <button class="danger" id="pDelete">Delete zone (keeps contents)</button>`;
     wireText("#pLabel", v => { if(v) z.label = v; });
     propsEl.querySelectorAll(".sw").forEach(sw => sw.addEventListener("click", () => { z.color = sw.dataset.c; commit(); renderAll(); }));
+    wireOrderControls();
     propsEl.querySelector("#pDelete").addEventListener("click", deleteSelection);
   } else if(ed){
     propsEl.innerHTML = `
@@ -2055,6 +2104,7 @@ function updateProps(){
           <option value="both" ${ed.arrows === "both" ? "selected" : ""}>Two-way ↔</option>
         </select></div>
       <div class="row"><label class="checkrow"><input type="checkbox" id="pAnim" ${ed.anim ? "checked" : ""}> Animated traffic flow</label></div>
+      ${orderControls()}
       <button class="danger" id="pDelete">Delete connection</button>`;
     propsEl.querySelector("#pLabel").addEventListener("change", e => { ed.label = e.target.value.trim(); commit(); renderAll(); });
     propsEl.querySelector("#pLabel").addEventListener("keydown", e => { e.stopPropagation(); if(e.key === "Enter") e.target.blur(); });
@@ -2062,6 +2112,7 @@ function updateProps(){
     propsEl.querySelector("#pRoute").addEventListener("change", e => { ed.route = e.target.value; commit(); renderAll(); });
     propsEl.querySelector("#pArrows").addEventListener("change", e => { ed.arrows = e.target.value; commit(); renderAll(); });
     propsEl.querySelector("#pAnim").addEventListener("change", e => { ed.anim = e.target.checked; commit(); renderAll(); });
+    wireOrderControls();
     propsEl.querySelector("#pDelete").addEventListener("click", deleteSelection);
   } else { propsEl.style.display = "none"; return; }
   propsEl.style.display = "block";
@@ -2077,6 +2128,8 @@ window.addEventListener("keydown", e => {
   else if(mod && e.key.toLowerCase() === "d"){ duplicateSelection(); e.preventDefault(); }
   else if(mod && e.key.toLowerCase() === "a"){ selection = new Set([...state.nodes.map(n => n.id), ...state.edges.map(x => x.id), ...state.zones.map(x => x.id)]); renderAll(); e.preventDefault(); }
   else if(mod && e.key.toLowerCase() === "s"){ exportJSON(); e.preventDefault(); }
+  else if(mod && e.code === "BracketRight"){ reorderSelection(e.shiftKey ? "toFront" : "forward"); e.preventDefault(); }
+  else if(mod && e.code === "BracketLeft"){ reorderSelection(e.shiftKey ? "toBack" : "back"); e.preventDefault(); }
   else if(e.key === "Delete" || e.key === "Backspace"){ deleteSelection(); }
   else if(e.key === "Escape"){
     if($("recModal").classList.contains("open")){ $("recModal").classList.remove("open"); return; }
