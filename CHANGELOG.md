@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.3 - 2026-08-05
+
+- Updated the displayed NetDraw version to `v1.1.3`.
+- Added an Azure palette section under Google Cloud Platform with 624 entries from the official Microsoft Azure Architecture Icons SVG package.
+
 ## v1.1.2 - 2026-08-05
 
 - Updated the displayed NetDraw version to `v1.1.2`.

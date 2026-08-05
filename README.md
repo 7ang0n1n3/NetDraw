@@ -1,6 +1,6 @@
 # NetDraw
 
-Current version: `v1.1.2`
+Current version: `v1.1.3`
 
 NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
 
@@ -19,7 +19,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 ## Features
 
 - Drag network, server, endpoint, people, Docker, place, process, and threat objects onto the canvas.
-- Add AWS and Google Cloud Platform service objects from palette sections below Docker, with service names sourced from the official provider icon packages.
+- Add AWS, Google Cloud Platform, and Azure service objects from palette sections below Docker, with service names sourced from the official provider icon packages.
 - Connect nodes with styled links, labels, structured routes, arrows, animated traffic, and sneakernet paths.
 - Create zones and swimlanes for network segments and process lanes.
 - Create multiple pages from bottom tabs; each page keeps its own canvas and view.
@@ -68,6 +68,10 @@ The AWS palette section contains 305 service entries from the official AWS Archi
 ## Google Cloud Platform
 
 The Google Cloud Platform palette section sits directly under AWS and contains 250 de-duplicated entries from the official Google Cloud product icon packages: product category icons, core product icons, and legacy console icons. Each Google Cloud object uses the official Google Cloud SVG graphic and preserves the product or category name in the palette and object label.
+
+## Azure
+
+The Azure palette section sits directly under Google Cloud Platform and contains 624 de-duplicated service entries from the official Microsoft Azure Architecture Icons SVG package, version 23. Each Azure object uses the official Azure SVG graphic and preserves the service name in the palette and object label.
 
 ## Journey
 
