@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.1 - 2026-08-05
+
+- Updated the displayed NetDraw version to `v1.1.1`.
+- Added an AWS palette section under Docker with 305 AWS service entries from the official AWS Architecture Icons package.
+
 ## v1.1.0 - 2026-08-05
 
 - Updated the displayed NetDraw version to `v1.1.0`.

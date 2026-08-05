@@ -1,6 +1,6 @@
 # NetDraw
 
-Current version: `v1.1.0`
+Current version: `v1.1.1`
 
 NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
 
@@ -19,6 +19,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 ## Features
 
 - Drag network, server, endpoint, people, Docker, place, process, and threat objects onto the canvas.
+- Add AWS service objects from the AWS palette section below Docker, with service names sourced from the official AWS architecture icon package.
 - Connect nodes with styled links, labels, structured routes, arrows, animated traffic, and sneakernet paths.
 - Create zones and swimlanes for network segments and process lanes.
 - Create multiple pages from bottom tabs; each page keeps its own canvas and view.
@@ -59,6 +60,10 @@ Arrow options are `None`, `Start with`, `End with`, and `Two-way`. Animated traf
 ## Objects
 
 Select a node, zone, swimlane, or connection to move it backward, forward, to the back, or to the front from the properties panel. Ordering is applied inside the selected item's drawing layer.
+
+## AWS
+
+The AWS palette section contains 305 service entries from the official AWS Architecture Icons package published on April 30, 2026. Each AWS object uses the official AWS service SVG graphic and preserves the official service name in the palette and object label.
 
 ## Journey
 
