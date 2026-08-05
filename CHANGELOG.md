@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.2 - 2026-08-05
+
+- Updated the displayed NetDraw version to `v1.1.2`.
+- Added a Google Cloud Platform palette section under AWS with 250 entries from the official Google Cloud icon packages.
+
 ## v1.1.1 - 2026-08-05
 
 - Updated the displayed NetDraw version to `v1.1.1`.
