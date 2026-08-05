@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-05
+
+- Added connection arrow options for start, end, and two-way directions.
+- Changed animated traffic flow so start and end arrow connections flow toward the arrow.
+- Added connection route choices: curved, straight, and elbow.
+- Added draggable bend handles for selected elbow connections.
+- Fixed the connection properties panel delete button.
+
 ## 2026-07-08
 
 - Added bottom page tabs for multi-page diagrams, including add, rename, switch, and delete page actions.

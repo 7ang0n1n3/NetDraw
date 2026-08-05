@@ -17,7 +17,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 ## Features
 
 - Drag network, server, endpoint, people, Docker, place, process, and threat objects onto the canvas.
-- Connect nodes with styled links, labels, arrows, animated traffic, and sneakernet paths.
+- Connect nodes with styled links, labels, structured routes, arrows, animated traffic, and sneakernet paths.
 - Create zones and swimlanes for network segments and process lanes.
 - Create multiple pages from bottom tabs; each page keeps its own canvas and view.
 - Edit labels, metadata, disposition, effects, colors, lane names, and edge styles from the properties panel.
@@ -42,6 +42,14 @@ Use the `Save` button to export a portable JSON file containing every page in th
 ## Pages
 
 Use the tabs along the bottom edge of the canvas to switch pages. Click `+` to add a page, double-click a page tab to rename it, and use the trash button to delete the current page. A document must always have at least one page.
+
+## Connections
+
+Select a connection to edit its label, line style, route, arrow direction, and animated traffic flow from the properties panel.
+
+Connection routes can be `Curved`, `Straight`, or `Elbow`. Existing diagrams default to `Curved`. For `Elbow` routes, select the connection and drag the bend handles on the line to move the structured path.
+
+Arrow options are `None`, `Start with`, `End with`, and `Two-way`. Animated traffic flow follows the selected start or end arrow direction; two-way arrows keep the current single-line animation behavior.
 
 ## Keyboard Shortcuts
 

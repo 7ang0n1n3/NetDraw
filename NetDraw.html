@@ -119,10 +119,14 @@
   .port{cursor:crosshair;}
   .port:hover{stroke-width:2.5;}
   .edge{cursor:pointer;}
+  .ebend{cursor:move;}
+  .ebend:hover{stroke-width:2.5;}
   .edge:hover .vis{stroke:#9db2d0;}
   .edge.sel .vis{stroke:#7dd3fc;}
   .vis.anim{animation:dashflow .8s linear infinite;}
+  .vis.anim.reverse{animation-name:dashflowReverse;}
   @keyframes dashflow{to{stroke-dashoffset:-28;}}
+  @keyframes dashflowReverse{to{stroke-dashoffset:28;}}
   .fxhalo{animation:fxpulse 1.6s ease-in-out infinite;}
   @keyframes fxpulse{0%,100%{stroke-opacity:.22;}50%{stroke-opacity:.85;}}
   text{pointer-events:none;}
@@ -710,13 +714,16 @@ function normalizeState(doc){
     const id = cleanId(e.id, "e");
     if(edgeIds.has(id)) throw new Error("duplicate edge id");
     edgeIds.add(id);
+    const bend = e.bend && finiteNum(e.bend.x) && finiteNum(e.bend.y) ? {x:e.bend.x, y:e.bend.y} : undefined;
     return {
       ...e,
       id,
       label: typeof e.label === "string" ? e.label : "",
       style: ["solid","dashed","dotted","sneakernet"].includes(e.style) ? e.style : "solid",
+      route: ["curved","straight","elbow"].includes(e.route) ? e.route : "curved",
+      bend,
       anim: !!e.anim,
-      arrows: ["none","end","both"].includes(e.arrows) ? e.arrows : "none"
+      arrows: ["none","start","end","both"].includes(e.arrows) ? e.arrows : "none"
     };
   });
   const zoneIds = new Set();
@@ -1075,9 +1082,33 @@ function anchor(n, toward){
   const s = Math.min(hw / Math.abs(dx || 1e-9), hh / Math.abs(dy || 1e-9));
   return {x: n.x + dx * s, y: n.y + dy * s};
 }
-function edgeGeom(a, b){
+function edgeGeom(a, b, route = "curved", edge = null){
   const p1 = anchor(a, b), p2 = anchor(b, a);
   const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  if(route === "straight"){
+    return {
+      d:`M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`,
+      mid:{x:(p1.x + p2.x)/2, y:(p1.y + p2.y)/2},
+      p1, c1:p1, c2:p2, p2
+    };
+  }
+  if(route === "elbow"){
+    const bend = edge && edge.bend && finiteNum(edge.bend.x) && finiteNum(edge.bend.y)
+      ? edge.bend
+      : {x:p1.x + dx/2, y:p1.y + dy/2};
+    const horizontal = Math.abs(dx) >= Math.abs(dy);
+    const d = horizontal
+      ? `M ${p1.x} ${p1.y} H ${bend.x} V ${bend.y} H ${p2.x} V ${p2.y}`
+      : `M ${p1.x} ${p1.y} V ${bend.y} H ${bend.x} V ${p2.y} H ${p2.x}`;
+    const handles = horizontal
+      ? [{x:bend.x, y:p1.y, axis:"x"}, {x:bend.x, y:bend.y, axis:"xy"}, {x:p2.x, y:bend.y, axis:"y"}]
+      : [{x:p1.x, y:bend.y, axis:"y"}, {x:bend.x, y:bend.y, axis:"xy"}, {x:bend.x, y:p2.y, axis:"x"}];
+    return {
+      d,
+      mid:{x:bend.x, y:bend.y},
+      p1, c1:p1, c2:p2, p2, bend, handles
+    };
+  }
   let c1, c2;
   if(Math.abs(dx) >= Math.abs(dy)){ c1 = {x:p1.x + dx*.4, y:p1.y}; c2 = {x:p2.x - dx*.4, y:p2.y}; }
   else { c1 = {x:p1.x, y:p1.y + dy*.4}; c2 = {x:p2.x, y:p2.y - dy*.4}; }
@@ -1195,17 +1226,18 @@ function ensureSneak(){
 function renderEdge(e){
   const a = nodeById(e.a), b = nodeById(e.b);
   if(!a || !b) return null;
-  const geo = edgeGeom(a, b);
+  const geo = edgeGeom(a, b, e.route, e);
   const sel = selection.has(e.id);
   const g = el("g", {class:"edge" + (sel ? " sel" : ""), "data-edge":e.id});
   g.appendChild(el("path", {d:geo.d, fill:"none", stroke:"transparent", "stroke-width":14}));  // hit area
   const sneak = e.style === "sneakernet";
-  const vis = el("path", {class:"vis" + (e.anim && !sneak ? " anim" : ""), d:geo.d, fill:"none",
+  const animClass = e.anim && !sneak ? " anim" + (e.arrows === "start" ? " reverse" : "") : "";
+  const vis = el("path", {class:"vis" + animClass, d:geo.d, fill:"none",
     stroke: sel ? "#7dd3fc" : (sneak ? tc("sneak") : tc("edge")), "stroke-width": sel ? 2.4 : (sneak ? 1.5 : 2), "stroke-linecap":"round"});
   const dash = dashFor(e);
   if(dash) vis.setAttribute("stroke-dasharray", dash);
   if(e.arrows === "end" || e.arrows === "both") vis.setAttribute("marker-end", "url(#arrow)");
-  if(e.arrows === "both") vis.setAttribute("marker-start", "url(#arrow)");
+  if(e.arrows === "start" || e.arrows === "both") vis.setAttribute("marker-start", "url(#arrow)");
   g.appendChild(vis);
   if(sneak) g.appendChild(buildFootsteps(geo));
   if(e.label){
@@ -1215,6 +1247,12 @@ function renderEdge(e){
     const t = el("text", {x:geo.mid.x, y:geo.mid.y + 3.6, "text-anchor":"middle", "font-size":10.5, fill:tc("edgeLabelText")});
     t.textContent = e.label;
     g.appendChild(t);
+  }
+  if(sel && e.route === "elbow"){
+    for(const h of (geo.handles || [])){
+      g.appendChild(el("rect", {class:"ebend", "data-ebend":e.id, "data-axis":h.axis, x:h.x-5, y:h.y-5, width:10, height:10, rx:3,
+        fill:tc("chipBg"), stroke:"#7dd3fc", "stroke-width":1.5}));
+    }
   }
   return g;
 }
@@ -1348,7 +1386,7 @@ function addNode(type, x, y, label){
 function addEdge(aId, bId){
   if(aId === bId) return;
   if(state.edges.some(e => (e.a === aId && e.b === bId) || (e.a === bId && e.b === aId))) return;
-  const e = {id:uid("e"), a:aId, b:bId, label:"", style:"solid", anim:false, arrows:"none"};
+  const e = {id:uid("e"), a:aId, b:bId, label:"", style:"solid", route:"curved", anim:false, arrows:"none"};
   state.edges.push(e);
   commit();
   selection = new Set([e.id]);
@@ -1522,6 +1560,7 @@ svg.addEventListener("pointerdown", e => {
 
   const portEl = e.target.closest ? e.target.closest("[data-port]") : null;
   const nodeG = e.target.closest ? e.target.closest("g[data-node]") : null;
+  const bendHandle = e.target.closest ? e.target.closest("[data-ebend]") : null;
   const edgeG = e.target.closest ? e.target.closest("g[data-edge]") : null;
   const zHandle = e.target.closest ? e.target.closest("[data-zhandle]") : null;
   const zoneG = e.target.closest ? e.target.closest("g[data-zone]") : null;
@@ -1540,6 +1579,19 @@ svg.addEventListener("pointerdown", e => {
     const id = portEl.getAttribute("data-port");
     drag = {kind:"link", from:id};
     svg.setPointerCapture(e.pointerId);
+    return;
+  }
+
+  if(bendHandle){
+    const id = bendHandle.getAttribute("data-ebend");
+    const ed = edgeById(id);
+    if(ed && ed.route === "elbow"){
+      if(!(selection.size === 1 && selection.has(id))){ selection = new Set([id]); renderAll(); }
+      const a = nodeById(ed.a), b = nodeById(ed.b);
+      if(a && b && (!ed.bend || !finiteNum(ed.bend.x) || !finiteNum(ed.bend.y))) ed.bend = edgeGeom(a, b, ed.route, ed).bend;
+      drag = {kind:"ebend", ed, axis:bendHandle.getAttribute("data-axis") || "xy", moved:false};
+      svg.setPointerCapture(e.pointerId);
+    }
     return;
   }
 
@@ -1667,6 +1719,15 @@ window.addEventListener("pointermove", e => {
     drag.z.h = Math.max(70, Math.abs(y1 - drag.fy));
     renderAll();
   }
+  else if(drag.kind === "ebend"){
+    drag.moved = true;
+    const cur = drag.ed.bend || {x:wp.x, y:wp.y};
+    drag.ed.bend = {
+      x:drag.axis.includes("x") ? snap(wp.x) : cur.x,
+      y:drag.axis.includes("y") ? snap(wp.y) : cur.y
+    };
+    renderAll();
+  }
   else if(drag.kind === "zdraw"){
     drag.x1 = wp.x; drag.y1 = wp.y;
     uiLayer.innerHTML = "";
@@ -1691,7 +1752,7 @@ window.addEventListener("pointerup", e => {
   const d = drag; drag = null;
   svg.classList.remove("panning");
 
-  if(d.kind === "move" || d.kind === "zmove" || d.kind === "zresize"){
+  if(d.kind === "move" || d.kind === "zmove" || d.kind === "zresize" || d.kind === "ebend"){
     if(d.kind === "move") tempLayer.innerHTML = "";
     if(d.moved) commit();
   }
@@ -1822,7 +1883,7 @@ function openEditor(target){
   } else {
     const ed = edgeById(target.id); if(!ed) return;
     const a = nodeById(ed.a), b = nodeById(ed.b); if(!a || !b) return;
-    const m = edgeGeom(a, b).mid;
+    const m = edgeGeom(a, b, ed.route, ed).mid;
     sp = toScreen(m.x, m.y); val = ed.label;
   }
   labelEditor.style.display = "block";
@@ -1980,10 +2041,17 @@ function updateProps(){
           <option value="dotted" ${ed.style === "dotted" ? "selected" : ""}>Dotted</option>
           <option value="sneakernet" ${ed.style === "sneakernet" ? "selected" : ""}>Sneakernet · air gap 👣</option>
         </select></div>
+      <div class="row"><label>Line route</label>
+        <select id="pRoute">
+          <option value="curved" ${ed.route === "curved" || !ed.route ? "selected" : ""}>Curved</option>
+          <option value="straight" ${ed.route === "straight" ? "selected" : ""}>Straight</option>
+          <option value="elbow" ${ed.route === "elbow" ? "selected" : ""}>Elbow</option>
+        </select></div>
       <div class="row"><label>Arrows</label>
         <select id="pArrows">
           <option value="none" ${ed.arrows === "none" ? "selected" : ""}>None</option>
-          <option value="end" ${ed.arrows === "end" ? "selected" : ""}>One-way →</option>
+          <option value="start" ${ed.arrows === "start" ? "selected" : ""}>Start with ←</option>
+          <option value="end" ${ed.arrows === "end" ? "selected" : ""}>End with →</option>
           <option value="both" ${ed.arrows === "both" ? "selected" : ""}>Two-way ↔</option>
         </select></div>
       <div class="row"><label class="checkrow"><input type="checkbox" id="pAnim" ${ed.anim ? "checked" : ""}> Animated traffic flow</label></div>
@@ -1991,8 +2059,10 @@ function updateProps(){
     propsEl.querySelector("#pLabel").addEventListener("change", e => { ed.label = e.target.value.trim(); commit(); renderAll(); });
     propsEl.querySelector("#pLabel").addEventListener("keydown", e => { e.stopPropagation(); if(e.key === "Enter") e.target.blur(); });
     propsEl.querySelector("#pStyle").addEventListener("change", e => { ed.style = e.target.value; commit(); renderAll(); });
+    propsEl.querySelector("#pRoute").addEventListener("change", e => { ed.route = e.target.value; commit(); renderAll(); });
     propsEl.querySelector("#pArrows").addEventListener("change", e => { ed.arrows = e.target.value; commit(); renderAll(); });
     propsEl.querySelector("#pAnim").addEventListener("change", e => { ed.anim = e.target.checked; commit(); renderAll(); });
+    propsEl.querySelector("#pDelete").addEventListener("click", deleteSelection);
   } else { propsEl.style.display = "none"; return; }
   propsEl.style.display = "block";
 }
@@ -2044,11 +2114,14 @@ const FONT_STACK = "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif";
    CSS animation state at time t into attributes so rasterized frames animate. */
 function cloneLayerMarkup(layer, t){
   const c = layer.cloneNode(true);
-  c.querySelectorAll(".ports, .zhandle").forEach(x => x.remove());
+  c.querySelectorAll(".ports, .zhandle, .ebend").forEach(x => x.remove());
   if(t != null){
     const haloOp = (0.22 + 0.63 * (0.5 - 0.5 * Math.cos(2 * Math.PI * t / 1.6))).toFixed(3);
     c.querySelectorAll(".fxhalo").forEach(x => x.setAttribute("stroke-opacity", haloOp));
-    c.querySelectorAll(".vis.anim").forEach(x => x.setAttribute("stroke-dashoffset", (-(35 * t) % 28).toFixed(2)));
+    c.querySelectorAll(".vis.anim").forEach(x => {
+      const dir = x.classList.contains("reverse") ? 1 : -1;
+      x.setAttribute("stroke-dashoffset", ((dir * 35 * t) % 28).toFixed(2));
+    });
     c.querySelectorAll(".footsteps").forEach(x => sneakStep(x, t));   // bake footprint walk at frame time
   }
   return c.outerHTML;
@@ -2483,7 +2556,7 @@ $("btnClear").onclick = () => {
 /* ---------- sample diagram ---------- */
 function sampleState(){
   const N = (id, type, x, y, label, meta) => Object.assign({id, type, x, y, label}, meta);
-  const E = (id, a, b, o) => Object.assign({id, a, b, label:"", style:"solid", anim:false, arrows:"none"}, o);
+  const E = (id, a, b, o) => Object.assign({id, a, b, label:"", style:"solid", route:"curved", anim:false, arrows:"none"}, o);
   return {
     nodes:[
       N("n1", "internet",    480,  60, "Internet"),
