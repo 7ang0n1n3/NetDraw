@@ -1,6 +1,11 @@
 # Changelog
 
-## 2026-08-05
+## v1.1.0 - 2026-08-05
+
+- Updated the displayed NetDraw version to `v1.1.0`.
+- Added page-level Journey workflows with step authoring, object picking, captions, camera focus, and playback controls.
+
+## v1.0.0 - 2026-08-05
 
 - Started versioning at `v1.0.0` and displayed the version next to the NetDraw name in the top-left header.
 - Added connection endpoint points so lines can attach to the top, right, bottom, or left side of each object.

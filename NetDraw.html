@@ -164,6 +164,79 @@
   #props .danger{width:100%; justify-content:center; background:#3a1622; color:#fda4af; border:1px solid #58202f; margin-top:2px;}
   #props .danger:hover{background:#4c1b2b;}
 
+  /* ---------- journey editor ---------- */
+  #journey{
+    position:absolute; inset:0; z-index:140; display:none;
+    align-items:center; justify-content:center;
+    background:rgba(4,8,16,.72); backdrop-filter:blur(4px);
+  }
+  .jm-box{
+    width:min(880px, 94%); max-height:90%; display:flex; flex-direction:column;
+    background:var(--panel); border:1px solid var(--border2); border-radius:14px;
+    box-shadow:0 24px 80px rgba(0,0,0,.6);
+  }
+  .jm-head{display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--border);}
+  .jm-head h3{font-size:15px; letter-spacing:.2px;}
+  #jClose{width:32px; height:32px; padding:0; background:var(--panel2); border:1px solid var(--border); color:var(--muted);}
+  #jClose:hover{background:var(--button-hover); color:var(--text);}
+  .jm-body{padding:16px 20px; overflow-y:auto;}
+  .jm-body::-webkit-scrollbar{width:9px;}
+  .jm-body::-webkit-scrollbar-thumb{background:var(--scroll-thumb); border-radius:5px;}
+  .jm-hint{font-size:12px; color:var(--faint); line-height:1.55; margin-bottom:14px;}
+  .jempty{font-size:13px; color:var(--faint); padding:24px 0; text-align:center;}
+  .jm-steps{display:flex; flex-direction:column; gap:12px;}
+  .jstep{background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px;}
+  .jhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;}
+  .jhead b{font-size:13px; color:var(--text);}
+  .jsp{display:flex; gap:5px;}
+  .jsp button{height:28px; min-width:28px; padding:0 9px; font-size:11.5px; background:var(--panel); border:1px solid var(--border); color:var(--muted);}
+  .jsp button:hover{background:var(--button-hover); color:var(--text);}
+  .jsp .danger{color:#fda4af; border-color:#58202f;}
+  .jnote{width:100%; background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 11px; font-size:13px; line-height:1.5; font-family:inherit; outline:none; resize:vertical; min-height:52px; margin-bottom:11px;}
+  .jnote:focus{border-color:#2f6fa8;}
+  .jchipsrow{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+  .jchips{display:flex; flex-wrap:wrap; gap:5px; flex:1; min-width:200px;}
+  .jchip{font-size:11px; color:#9fb2cf; background:var(--panel); border:1px solid var(--border); border-radius:99px; padding:3px 10px;}
+  .jchip.empty{color:var(--faint); font-style:italic;}
+  .jrowbtns{display:flex; align-items:center; gap:10px;}
+  .jpick{height:30px; padding:0 12px; font-size:12px; background:#123047; color:#7dd3fc; border:1px solid #1e4f6e; white-space:nowrap;}
+  .jpick:hover{background:#163a56;}
+  .jfocus{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer; white-space:nowrap;}
+  .jm-foot{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 20px; border-top:1px solid var(--border);}
+  .jm-foot-r{display:flex; align-items:center; gap:14px;}
+  .jcountlbl{font-size:12px; color:var(--faint);}
+  #jAdd{height:36px; padding:0 16px; background:var(--panel2); border:1px solid var(--border); color:var(--text); font-weight:600;}
+  #jAdd:hover{background:var(--button-hover);}
+  #jPlay.jprimary{height:36px; padding:0 18px; background:#123047; color:#7dd3fc; border:1px solid #1e4f6e; font-weight:600;}
+  #jPlay.jprimary:hover{background:#163a56;}
+  #pickBar{
+    position:absolute; bottom:52px; left:50%; transform:translateX(-50%); z-index:135; display:none;
+    align-items:center; gap:12px; max-width:min(720px,94%);
+    background:var(--props-bg); backdrop-filter:blur(10px);
+    border:1px solid #1e4f6e; border-radius:14px; padding:10px 16px;
+    box-shadow:0 16px 50px rgba(0,0,0,.55);
+  }
+  #pickMsg{font-size:12.5px; color:#7dd3fc;}
+  #pickBar button{height:32px; padding:0 14px; font-weight:600; border:1px solid var(--border); background:var(--panel2); color:var(--text);}
+  #pickUse{background:#123047; color:#7dd3fc; border-color:#1e4f6e;}
+  #pickBar button:hover{filter:brightness(1.15);}
+  body.presenting #palette, body.presenting #topbar .tgroup, body.presenting #hintbar, body.presenting #journey, body.presenting #pagebar{display:none !important;}
+  body.presenting #topbar{justify-content:center;}
+  body.presenting #logo{margin:0;}
+  #presentBar{
+    position:absolute; bottom:52px; left:50%; transform:translateX(-50%); z-index:120; display:none;
+    align-items:center; gap:10px; max-width:min(760px,92%);
+    background:var(--props-bg); backdrop-filter:blur(10px);
+    border:1px solid var(--border2); border-radius:14px; padding:10px 14px;
+    box-shadow:0 16px 50px rgba(0,0,0,.55);
+  }
+  #presentBar button{height:32px; padding:0 12px; background:var(--panel2); border:1px solid var(--border); color:var(--text); font-weight:600;}
+  #presentBar button:hover{background:var(--button-hover);}
+  #presentBar button:disabled{opacity:.35;}
+  #pjExit{min-width:32px; padding:0; color:#fda4af;}
+  #pjCounter{font-size:12px; color:var(--muted); min-width:42px; text-align:center; font-variant-numeric:tabular-nums;}
+  #pjCaption{font-size:13px; color:var(--text); line-height:1.4; max-width:440px; max-height:3.9em; overflow:auto;}
+
   /* ---------- hint bar ---------- */
   #hintbar{
     position:absolute; bottom:52px; left:50%; transform:translateX(-50%);
@@ -238,7 +311,7 @@
         <circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/>
         <path d="M7 7.5 10.5 16M17 7.5 13.5 16M7.6 6h8.8"/>
       </svg>
-      NetDraw <span class="sub">v1.0.0</span>
+      NetDraw <span class="sub">v1.1.0</span>
     </div>
 
     <div class="tgroup">
@@ -309,6 +382,12 @@
       </button>
     </div>
     <div class="tgroup">
+      <button id="btnJourney" class="btn-text" title="Journey / narration">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l11-2v12l-11 2z"/><path d="M9 6 4 4v12l5 2z"/><path d="M9 6v12"/></svg>
+        Journey
+      </button>
+    </div>
+    <div class="tgroup">
       <button id="btnRec" class="btn-text" title="Record the diagram as video, with optional mic narration or music">
         <svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" fill="#ef4444"/></svg>
         <span>Rec</span>
@@ -351,6 +430,19 @@
       </svg>
 
       <div id="props"></div>
+      <div id="journey"></div>
+      <div id="presentBar">
+        <button id="pjExit" title="Exit (Esc)">✕</button>
+        <button id="pjPrev" title="Previous">‹ Prev</button>
+        <span id="pjCounter">1 / 1</span>
+        <button id="pjNext" title="Next">Next ›</button>
+        <div id="pjCaption"></div>
+      </div>
+      <div id="pickBar">
+        <span id="pickMsg"></span>
+        <button id="pickUse">Use selection</button>
+        <button id="pickCancel">Cancel</button>
+      </div>
       <div id="hintbar"><b>V</b> select&ensp;·&ensp;<b>C</b> connect&ensp;·&ensp;<b>Z</b> zone&ensp;·&ensp;drag empty canvas to pan&ensp;·&ensp;<b>Shift</b>+drag select&ensp;·&ensp;<b>Del</b> delete</div>
       <input id="labelEditor" type="text" spellcheck="false">
       <div id="toast"></div>
@@ -659,7 +751,7 @@ const ZONE_COLORS = ["#38bdf8","#a78bfa","#34d399","#f59e0b","#f472b6","#2dd4bf"
 const SWATCHES = ["#38bdf8","#60a5fa","#a78bfa","#c084fc","#f472b6","#f87171","#fb923c","#fbbf24","#34d399","#2dd4bf","#94a3b8"];
 
 /* ---------- state ---------- */
-let state = {nodes:[], edges:[], zones:[]};
+let state = {nodes:[], edges:[], zones:[], journey:{steps:[]}};
 let view = {x:0, y:0, k:1};
 let pages = [];
 let activePageId = null;
@@ -693,7 +785,7 @@ function snap(v){ return snapOn ? Math.round(v / SNAP) * SNAP : v; }
 function inZone(n, z){ return n.x > z.x && n.x < z.x + z.w && n.y > z.y && n.y < z.y + z.h; }
 function cleanId(v, p){ return (typeof v === "string" && v.trim()) ? v : uid(p); }
 function finiteNum(v){ return typeof v === "number" && Number.isFinite(v); }
-function blankState(){ return {nodes:[], edges:[], zones:[]}; }
+function blankState(){ return {nodes:[], edges:[], zones:[], journey:{steps:[]}}; }
 function blankView(){ return {x:0, y:0, k:1}; }
 function cleanPageName(v, fallback){
   const s = typeof v === "string" ? v.trim() : "";
@@ -701,6 +793,18 @@ function cleanPageName(v, fallback){
 }
 const PORT_SIDES = ["top", "right", "bottom", "left"];
 function cleanPort(v){ return PORT_SIDES.includes(v) ? v : ""; }
+function normalizeIdList(v){ return Array.isArray(v) ? v.filter(x => typeof x === "string") : []; }
+function normalizeJourney(v){
+  const steps = v && Array.isArray(v.steps) ? v.steps : [];
+  return {
+    steps:steps.map(s => ({
+      note:typeof s.note === "string" ? s.note : "",
+      show:normalizeIdList(s.show),
+      highlight:normalizeIdList(s.highlight),
+      focus:s.focus !== false
+    }))
+  };
+}
 function normalizeState(doc){
   if(!doc || !Array.isArray(doc.nodes) || !Array.isArray(doc.edges)) throw new Error("bad document");
   const seen = new Set();
@@ -754,7 +858,7 @@ function normalizeState(doc){
     }
     return out;
   });
-  return {nodes, edges, zones};
+  return {nodes, edges, zones, journey:normalizeJourney(doc.journey)};
 }
 function normalizeView(v){
   return v && finiteNum(v.x) && finiteNum(v.y) && finiteNum(v.k)
@@ -1360,14 +1464,243 @@ function renderZone(z){
 
 function renderAll(){
   zonesLayer.innerHTML = "";
-  for(const z of state.zones) zonesLayer.appendChild(renderZone(z));
+  for(const z of state.zones){
+    const s = elemState(z.id);
+    if(s === "hidden") continue;
+    const g = renderZone(z);
+    if(s === "dim") dimGroup(g);
+    zonesLayer.appendChild(g);
+  }
   edgesLayer.innerHTML = "";
-  for(const e of state.edges){ const g = renderEdge(e); if(g) edgesLayer.appendChild(g); }
+  for(const e of state.edges){
+    if(elemState(e.a) === "hidden" || elemState(e.b) === "hidden") continue;
+    const s = elemState(e.id);
+    if(s === "hidden") continue;
+    const g = renderEdge(e);
+    if(!g) continue;
+    if(s === "dim") dimGroup(g);
+    edgesLayer.appendChild(g);
+  }
   nodesLayer.innerHTML = "";
-  for(const n of state.nodes) nodesLayer.appendChild(renderNode(n));
+  for(const n of state.nodes){
+    const s = elemState(n.id);
+    if(s === "hidden") continue;
+    const g = renderNode(n);
+    if(s === "dim") dimGroup(g);
+    nodesLayer.appendChild(g);
+  }
   updateProps();
   updateToolbar();
   ensureSneak();
+}
+
+let present = null, pjHidden = new Set(), pjOn = new Set(), pjHasHL = false;
+function elemState(id){
+  if(!present) return "on";
+  if(pjHidden.has(id)) return "hidden";
+  return pjOn.has(id) ? "on" : (pjHasHL ? "dim" : "on");
+}
+function dimGroup(g){
+  g.setAttribute("opacity", ".13");
+  g.style.pointerEvents = "none";
+  g.querySelectorAll(".footsteps").forEach(x => x.remove());
+  g.querySelectorAll(".vis.anim").forEach(x => x.classList.remove("anim"));
+}
+
+/* ---------- journey / narration ---------- */
+function jSteps(){
+  if(!state.journey || !Array.isArray(state.journey.steps)) state.journey = {steps:[]};
+  return state.journey.steps;
+}
+function boundsOf(ids){
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, any = false;
+  for(const id of ids){
+    const n = nodeById(id);
+    if(n){
+      const hw = nodeW(n)/2, hh = nodeH(n)/2;
+      x0 = Math.min(x0, n.x - hw); x1 = Math.max(x1, n.x + hw);
+      y0 = Math.min(y0, n.y - hh); y1 = Math.max(y1, n.y + hh);
+      any = true;
+      continue;
+    }
+    const z = zoneById(id);
+    if(z){
+      x0 = Math.min(x0, z.x); x1 = Math.max(x1, z.x + z.w);
+      y0 = Math.min(y0, z.y - 14); y1 = Math.max(y1, z.y + z.h);
+      any = true;
+    }
+  }
+  return any ? {x0, y0, x1, y1} : null;
+}
+let viewTween = null;
+function tweenView(tx, ty, tk, ms){
+  if(viewTween) cancelAnimationFrame(viewTween);
+  const s = {x:view.x, y:view.y, k:view.k}, t0 = performance.now();
+  const ease = u => u < .5 ? 2*u*u : 1 - Math.pow(-2*u + 2, 2)/2;
+  const tick = () => {
+    const u = Math.min(1, (performance.now() - t0)/ms), e = ease(u);
+    view.x = s.x + (tx - s.x)*e;
+    view.y = s.y + (ty - s.y)*e;
+    view.k = s.k + (tk - s.k)*e;
+    applyView();
+    if(u < 1) viewTween = requestAnimationFrame(tick);
+    else viewTween = null;
+  };
+  viewTween = requestAnimationFrame(tick);
+}
+function focusOnBounds(b, animate){
+  if(!b) return;
+  const pad = 80, r = svg.getBoundingClientRect();
+  if(r.width < 10 || r.height < 10) return;
+  const k = clamp(Math.min(r.width/(b.x1 - b.x0 + pad*2), r.height/(b.y1 - b.y0 + pad*2)), 0.2, 1.8);
+  const tx = (r.width - (b.x0 + b.x1)*k)/2;
+  const ty = (r.height - (b.y0 + b.y1)*k)/2;
+  if(animate) tweenView(tx, ty, k, 620);
+  else { view.x = tx; view.y = ty; view.k = k; applyView(); }
+}
+function applyStep(k, animate){
+  const steps = jSteps();
+  if(!steps.length) return;
+  k = clamp(k, 0, steps.length - 1);
+  present.step = k;
+  const everShown = new Set(), shownSoFar = new Set();
+  steps.forEach(s => (s.show || []).forEach(id => everShown.add(id)));
+  for(let i = 0; i <= k; i++) (steps[i].show || []).forEach(id => shownSoFar.add(id));
+  pjHidden = new Set([...everShown].filter(id => !shownSoFar.has(id)));
+  const hl = new Set(steps[k].highlight || []);
+  pjHasHL = hl.size > 0;
+  pjOn = new Set(hl);
+  state.edges.forEach(e => { if(hl.has(e.a) && hl.has(e.b)) pjOn.add(e.id); });
+  renderAll();
+  if(steps[k].focus !== false){
+    const visibleNodes = state.nodes.map(n => n.id).filter(id => !pjHidden.has(id));
+    const b = boundsOf(hl.size ? [...hl] : [...shownSoFar]) || boundsOf(visibleNodes);
+    focusOnBounds(b, animate);
+  }
+  $("pjCaption").innerHTML = esc(steps[k].note || "");
+  $("pjCounter").textContent = (k + 1) + " / " + steps.length;
+  $("pjPrev").disabled = k === 0;
+  $("pjNext").disabled = k === steps.length - 1;
+}
+function enterPresent(fromStep = 0){
+  if(!jSteps().length){ toast("Add journey steps first"); return; }
+  present = {step:0};
+  selection.clear();
+  document.body.classList.add("presenting");
+  $("presentBar").style.display = "flex";
+  applyStep(fromStep, false);
+}
+function exitPresent(){
+  if(!present) return;
+  present = null;
+  pjHidden = new Set(); pjOn = new Set(); pjHasHL = false;
+  if(viewTween){ cancelAnimationFrame(viewTween); viewTween = null; }
+  document.body.classList.remove("presenting");
+  $("presentBar").style.display = "none";
+  renderAll();
+}
+function pjNext(){ if(present && present.step < jSteps().length - 1) applyStep(present.step + 1, true); }
+function pjPrev(){ if(present && present.step > 0) applyStep(present.step - 1, true); }
+
+let journeyOpen = false, picking = null;
+function jLabelOf(id){
+  const n = nodeById(id); if(n) return n.label || "node";
+  const z = zoneById(id); if(z) return z.label || "zone";
+  if(edgeById(id)) return "connection";
+  return id;
+}
+function toggleJourney(){
+  if(picking) endPick(false);
+  journeyOpen = !journeyOpen;
+  $("journey").style.display = journeyOpen ? "flex" : "none";
+  $("btnJourney").classList.toggle("active", journeyOpen);
+  if(journeyOpen){
+    propsEl.style.display = "none";
+    buildJourneyModal();
+  } else {
+    renderAll();
+  }
+}
+function addStep(){
+  jSteps().push({note:"", show:[], highlight:[], focus:true});
+  commit();
+  startPick(jSteps().length - 1);
+}
+function buildJourneyModal(){
+  const steps = jSteps();
+  const cards = steps.map((s, i) => {
+    const chips = (s.show || []).length
+      ? s.show.map(id => `<span class="jchip">${esc(jLabelOf(id))}</span>`).join("")
+      : '<span class="jchip empty">caption only - nothing revealed</span>';
+    return `<div class="jstep" data-i="${i}">
+      <div class="jhead"><b>Step ${i + 1}</b>
+        <span class="jsp">
+          <button class="jup" data-i="${i}" title="Move up">▲</button>
+          <button class="jdn" data-i="${i}" title="Move down">▼</button>
+          <button class="jplay" data-i="${i}" title="Preview from here">▶ preview</button>
+          <button class="jdel danger" data-i="${i}" title="Delete step">✕</button>
+        </span>
+      </div>
+      <textarea class="jnote" data-i="${i}" rows="3" placeholder="Narration caption for this step...">${esc(s.note || "")}</textarea>
+      <div class="jchipsrow">
+        <div class="jchips">${chips}</div>
+        <div class="jrowbtns">
+          <button class="jpick" data-i="${i}">Pick objects</button>
+          <label class="jfocus"><input type="checkbox" class="jfoc" data-i="${i}" ${s.focus !== false ? "checked" : ""}> Focus camera</label>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+  $("journey").innerHTML = `<div class="jm-box">
+    <div class="jm-head"><h3>Journey / narration</h3><button id="jClose" title="Close">✕</button></div>
+    <div class="jm-body">
+      <p class="jm-hint">Each step reveals its objects and highlights them. Objects revealed in earlier steps stay visible. Pick objects from the canvas, write a caption, reorder steps, then play the journey.</p>
+      <div class="jm-steps">${cards || '<p class="jempty">No steps yet. Add a step to begin.</p>'}</div>
+    </div>
+    <div class="jm-foot">
+      <button id="jAdd">+ Add step</button>
+      <div class="jm-foot-r"><span class="jcountlbl">${steps.length} step${steps.length === 1 ? "" : "s"}</span><button id="jPlay" class="jprimary">▶ Play journey</button></div>
+    </div>
+  </div>`;
+  const q = sel => $("journey").querySelectorAll(sel);
+  $("jClose").onclick = toggleJourney;
+  $("jAdd").onclick = addStep;
+  $("jPlay").onclick = () => { if(steps.length) enterPresent(0); else toast("Add a step first"); };
+  q(".jnote").forEach(inp => {
+    inp.addEventListener("change", e => { steps[+inp.dataset.i].note = e.target.value; commit(); });
+    inp.addEventListener("keydown", e => e.stopPropagation());
+  });
+  q(".jfoc").forEach(b => b.onclick = () => { steps[+b.dataset.i].focus = b.checked; commit(); });
+  q(".jpick").forEach(b => b.onclick = () => startPick(+b.dataset.i));
+  q(".jup").forEach(b => b.onclick = () => { const i = +b.dataset.i; if(i > 0){ [steps[i - 1], steps[i]] = [steps[i], steps[i - 1]]; commit(); buildJourneyModal(); } });
+  q(".jdn").forEach(b => b.onclick = () => { const i = +b.dataset.i; if(i < steps.length - 1){ [steps[i + 1], steps[i]] = [steps[i], steps[i + 1]]; commit(); buildJourneyModal(); } });
+  q(".jdel").forEach(b => b.onclick = () => { steps.splice(+b.dataset.i, 1); commit(); buildJourneyModal(); });
+  q(".jplay").forEach(b => b.onclick = () => enterPresent(+b.dataset.i));
+}
+function startPick(i){
+  picking = {i};
+  const s = jSteps()[i];
+  selection = new Set(s.show || []);
+  $("journey").style.display = "none";
+  setTool("select");
+  renderAll();
+  $("pickBar").style.display = "flex";
+  $("pickMsg").textContent = `Selecting objects for Step ${i + 1}`;
+}
+function endPick(apply){
+  if(!picking) return;
+  if(apply){
+    const s = jSteps()[picking.i];
+    s.show = [...selection];
+    s.highlight = [...selection];
+    commit();
+  }
+  picking = null;
+  $("pickBar").style.display = "none";
+  selection.clear();
+  $("journey").style.display = "flex";
+  renderAll();
+  buildJourneyModal();
 }
 
 /* ---------- history / persistence ---------- */
@@ -1539,6 +1872,7 @@ function startPaletteDrag(ev, type){
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
     ghost.style.display = "none";
+    if(present || picking) return;
     const r = svg.getBoundingClientRect();
     if(moved && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom){
       const p = toWorld(e.clientX, e.clientY);
@@ -1623,6 +1957,25 @@ svg.addEventListener("pointerdown", e => {
     return;
   }
   if(e.button !== 0) return;
+  if(present) return;
+
+  if(picking){
+    const ng = e.target.closest && e.target.closest("g[data-node]");
+    const eg = e.target.closest && e.target.closest("g[data-edge]");
+    const zg = e.target.closest && e.target.closest("g[data-zone]");
+    const hit = ng || eg || zg;
+    if(hit){
+      const id = hit.getAttribute(ng ? "data-node" : eg ? "data-edge" : "data-zone");
+      if(e.shiftKey) selection.has(id) ? selection.delete(id) : selection.add(id);
+      else selection = new Set([id]);
+    } else {
+      drag = {kind:"marquee", x0:wp.x, y0:wp.y, x1:wp.x, y1:wp.y, add:e.shiftKey};
+      svg.setPointerCapture(e.pointerId);
+      if(!e.shiftKey) selection.clear();
+    }
+    renderAll();
+    return;
+  }
 
   // zone / swimlane tool: drag out a new container anywhere
   if(tool === "zone" || tool === "lane"){
@@ -1877,8 +2230,13 @@ window.addEventListener("pointerup", e => {
     const x0 = Math.min(d.x0, d.x1), x1 = Math.max(d.x0, d.x1);
     const y0 = Math.min(d.y0, d.y1), y1 = Math.max(d.y0, d.y1);
     if(x1 - x0 > 4 || y1 - y0 > 4){
-      const hits = state.nodes.filter(n =>
-        n.x + NW/2 > x0 && n.x - NW/2 < x1 && n.y + NH/2 > y0 && n.y - NH/2 < y1).map(n => n.id);
+      const nodeHits = state.nodes.filter(n => {
+        const hw = nodeW(n)/2, hh = nodeH(n)/2;
+        return n.x + hw > x0 && n.x - hw < x1 && n.y + hh > y0 && n.y - hh < y1;
+      }).map(n => n.id);
+      const zoneHits = state.zones.filter(z =>
+        z.x + z.w > x0 && z.x < x1 && z.y + z.h > y0 && z.y < y1).map(z => z.id);
+      const hits = picking ? [...zoneHits, ...nodeHits] : nodeHits;
       if(!d.add) selection.clear();
       hits.forEach(id => selection.add(id));
       renderAll();
@@ -1999,6 +2357,7 @@ labelEditor.addEventListener("blur", commitEditor);
 
 /* ---------- properties panel ---------- */
 function updateProps(){
+  if(journeyOpen || present){ propsEl.style.display = "none"; return; }
   if(selection.size !== 1){ propsEl.style.display = "none"; return; }
   const id = [...selection][0];
   const n = nodeById(id), ed = edgeById(id), z = zoneById(id);
@@ -2192,6 +2551,19 @@ function updateProps(){
 /* ---------- keyboard ---------- */
 window.addEventListener("keydown", e => {
   if(e.target === labelEditor || e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+  if(present){
+    if(e.key === "ArrowRight" || e.key === " " || e.code === "Space"){ pjNext(); e.preventDefault(); }
+    else if(e.key === "ArrowLeft"){ pjPrev(); e.preventDefault(); }
+    else if(e.key === "Escape"){ exitPresent(); e.preventDefault(); }
+    return;
+  }
+  if(picking){
+    if(e.key === "Enter"){ endPick(true); e.preventDefault(); }
+    else if(e.key === "Escape"){ endPick(false); e.preventDefault(); }
+    else if(e.key === "Delete" || e.key === "Backspace") e.preventDefault();
+    return;
+  }
+  if(journeyOpen && e.key === "Escape"){ toggleJourney(); e.preventDefault(); return; }
   if(e.code === "Space"){ spaceDown = true; if(!drag) svg.classList.add("panning"); e.preventDefault(); return; }
   const mod = e.ctrlKey || e.metaKey;
   if(mod && e.key.toLowerCase() === "z" && !e.shiftKey){ undo(); e.preventDefault(); }
@@ -2643,6 +3015,12 @@ $("btnTheme").onclick = () => applyTheme(theme === "light" ? "dark" : "light");
 $("btnPNG").onclick = exportPNG;
 $("btnSVG").onclick = exportSVG;
 $("btnGIF").onclick = exportGIF;
+$("btnJourney").onclick = toggleJourney;
+$("pickUse").onclick = () => endPick(true);
+$("pickCancel").onclick = () => endPick(false);
+$("pjExit").onclick = exitPresent;
+$("pjPrev").onclick = pjPrev;
+$("pjNext").onclick = pjNext;
 $("btnRec").onclick = () => {
   if(rec){ stopRecording(); return; }
   populateRecFormats();
@@ -2719,7 +3097,14 @@ function sampleState(){
       E("e12","n11","n13", {label:"sends", style:"dotted", arrows:"end"}),
       E("e13","n13","n14", {label:"targets", style:"dashed", arrows:"end"}),
       E("e14","n14","n9",  {label:"uses", style:"dotted"})
-    ]
+    ],
+    journey:{steps:[
+      {note:"The public path starts at the Internet and reaches the edge firewall.", show:["n1","n2","e1","z1"], highlight:["n1","n2","e1"], focus:true},
+      {note:"Traffic moves through the core routing and switching layer.", show:["n3","n4","e2","e3","z2"], highlight:["n3","n4","e2","e3"], focus:true},
+      {note:"Internal services sit on the server VLAN behind the core switch.", show:["n5","n6","n7","e4","e5","e6","z3"], highlight:["n5","n6","n7","z3"], focus:true},
+      {note:"Wireless clients connect through the office access point.", show:["n8","n9","n10","e7","e8","e9","z4"], highlight:["n8","n9","n10","z4"], focus:true},
+      {note:"The threat path shows botnet pressure and a phishing route into the user workstation.", show:["n11","n12","n13","n14","e10","e11","e12","e13","e14"], highlight:["n11","n12","n13","n14","e11","e13"], focus:true}
+    ]}
   };
 }
 

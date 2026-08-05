@@ -1,6 +1,6 @@
 # NetDraw
 
-Current version: `v1.0.0`
+Current version: `v1.1.0`
 
 NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
 
@@ -22,6 +22,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 - Connect nodes with styled links, labels, structured routes, arrows, animated traffic, and sneakernet paths.
 - Create zones and swimlanes for network segments and process lanes.
 - Create multiple pages from bottom tabs; each page keeps its own canvas and view.
+- Build page-level journey walkthroughs with ordered reveal/highlight steps and captions.
 - Edit labels, metadata, disposition, effects, colors, lane names, and edge styles from the properties panel.
 - Pan by dragging empty canvas, zoom with the mouse wheel or toolbar, and fit the diagram to view.
 - Toggle light and dark mode from the top toolbar.
@@ -58,6 +59,10 @@ Arrow options are `None`, `Start with`, `End with`, and `Two-way`. Animated traf
 ## Objects
 
 Select a node, zone, swimlane, or connection to move it backward, forward, to the back, or to the front from the properties panel. Ordering is applied inside the selected item's drawing layer.
+
+## Journey
+
+Use `Journey` to create a guided walkthrough for the current page. Add steps, pick the objects each step reveals, write captions, and play the journey with the presentation controls. Journey steps are saved in the exported JSON document with their page.
 
 ## Keyboard Shortcuts
 
