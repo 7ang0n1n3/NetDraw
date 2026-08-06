@@ -503,6 +503,7 @@ const NW = 104, NH = 74;          // node card size
 const GRID = 26, SNAP = 13;       // grid spacing / snap step
 const LS_KEY = "netdraw.doc.v1";
 const DOC_VERSION = 2;
+const APP_NAME = "NetDraw";
 const THEME_KEY = "netdraw.theme.v1";
 const PALETTE_KEY = "netdraw.palette.v1";
 const THEMES = {
@@ -10435,6 +10436,94 @@ function toast(msg){
   toast._t = setTimeout(() => t.style.display = "none", 2200);
 }
 const FONT_STACK = "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif";
+function appVersion(){
+  const v = document.querySelector("#logo .sub");
+  return v ? v.textContent.trim() : "";
+}
+function appSoftware(){
+  return [APP_NAME, appVersion()].filter(Boolean).join(" ");
+}
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for(let n = 0; n < 256; n++){
+    let c = n;
+    for(let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+function crc32(bytes){
+  let c = 0xffffffff;
+  for(const b of bytes) c = CRC_TABLE[(c ^ b) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+function asciiBytes(s){
+  const out = new Uint8Array(s.length);
+  for(let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 255;
+  return out;
+}
+function u32be(n){
+  return new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+}
+function pngChunk(type, data){
+  const typeBytes = asciiBytes(type);
+  const body = new Uint8Array(typeBytes.length + data.length);
+  body.set(typeBytes, 0);
+  body.set(data, typeBytes.length);
+  const out = new Uint8Array(12 + data.length);
+  out.set(u32be(data.length), 0);
+  out.set(body, 4);
+  out.set(u32be(crc32(body)), 8 + data.length);
+  return out;
+}
+async function withPngSoftware(blob){
+  const src = new Uint8Array(await blob.arrayBuffer());
+  const sig = [137,80,78,71,13,10,26,10];
+  if(src.length < 12 || !sig.every((b, i) => src[i] === b)) return blob;
+  let iend = -1;
+  for(let p = 8; p + 12 <= src.length;){
+    const len = ((src[p] << 24) | (src[p+1] << 16) | (src[p+2] << 8) | src[p+3]) >>> 0;
+    const type = String.fromCharCode(src[p+4], src[p+5], src[p+6], src[p+7]);
+    if(type === "IEND"){ iend = p; break; }
+    p += 12 + len;
+  }
+  if(iend < 0) return blob;
+  const text = asciiBytes("Software\0" + appSoftware());
+  const meta = pngChunk("tEXt", text);
+  return new Blob([src.slice(0, iend), meta, src.slice(iend)], {type:"image/png"});
+}
+function xmpPacket(){
+  return `<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:tiff="http://ns.adobe.com/tiff/1.0/" xmp:CreatorTool="${esc(appSoftware())}" tiff:Software="${esc(appSoftware())}"/>
+</rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`;
+}
+function gifSubBlocks(bytes){
+  const out = [];
+  for(let i = 0; i < bytes.length; i += 255){
+    const chunk = bytes.slice(i, i + 255);
+    out.push(chunk.length, ...chunk);
+  }
+  out.push(0);
+  return out;
+}
+function withGifSoftware(bytes){
+  if(bytes.length < 7 || String.fromCharCode(...bytes.slice(0, 6)) !== "GIF89a") return bytes;
+  const trailer = bytes[bytes.length - 1] === 0x3b ? bytes.length - 1 : bytes.length;
+  const app = [
+    0x21, 0xff, 11,
+    ...asciiBytes("XMP DataXMP"),
+    ...gifSubBlocks(new TextEncoder().encode(xmpPacket()))
+  ];
+  const out = new Uint8Array(trailer + app.length + (trailer < bytes.length ? 1 : 0));
+  out.set(bytes.slice(0, trailer), 0);
+  out.set(app, trailer);
+  if(trailer < bytes.length) out[out.length - 1] = 0x3b;
+  return out;
+}
 /* Clone the diagram layers, strip editor-only UI, and (if t is given) bake the
    CSS animation state at time t into attributes so rasterized frames animate. */
 function cloneLayerMarkup(layer, t){
@@ -10518,7 +10607,11 @@ function exportPNG(){
     ctx.scale(scale, scale);
     ctx.drawImage(img, 0, 0, r.w, r.h);
     URL.revokeObjectURL(url);
-    c.toBlob(b => { download("network-diagram.png", b); toast("PNG exported (2× resolution)"); }, "image/png");
+    c.toBlob(async b => {
+      if(!b){ toast("PNG export failed"); return; }
+      download("network-diagram.png", await withPngSoftware(b));
+      toast("PNG exported (2× resolution)");
+    }, "image/png");
   };
   img.onerror = () => { URL.revokeObjectURL(url); toast("PNG export failed"); };
   img.src = url;
@@ -10665,7 +10758,7 @@ async function exportGIF(){
       indexFrames.push(idx);
       await tick();
     }
-    const bytes = gifAssemble(W, H, palette, indexFrames, DELAY);
+    const bytes = withGifSoftware(gifAssemble(W, H, palette, indexFrames, DELAY));
     download("network-diagram.gif", new Blob([bytes], {type:"image/gif"}));
     toast(`GIF exported (${W}×${H}, ${FRAMES} frames, loops forever)`);
   }catch(err){

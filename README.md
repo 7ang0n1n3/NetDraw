@@ -30,7 +30,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 - Toggle light and dark mode from the top toolbar.
 - Collapse and expand individual palette sections, or use the top palette control to collapse or expand all sections at once.
 - Save and load diagrams as one JSON file, including all pages.
-- Export diagrams as PNG, SVG, or animated GIF.
+- Export diagrams as PNG, SVG, or animated GIF. PNG and GIF exports include NetDraw and the current version in image software metadata.
 - Record the visible canvas as video with optional microphone or music audio when supported by the browser.
 
 ## Local Browser Storage
