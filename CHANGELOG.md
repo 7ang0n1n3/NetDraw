@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.7 - 2026-08-06
+
+- Updated the displayed NetDraw version to `v1.1.7`.
+- Added object resize handles for selected nodes, with saved custom dimensions and backward-compatible automatic sizing for existing diagrams.
+- Added connections between zones and objects, including zone-to-zone and zone-to-node links using the existing side-point routing model.
+- Added `Down`, `Missing`, and `Unavailable` effects/status entries for nodes.
+- Fixed zone connection hit testing so the temporary connection preview does not block zone targets.
+
 ## v1.1.6 - 2026-08-05
 
 - Updated the displayed NetDraw version to `v1.1.6`.

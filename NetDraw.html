@@ -132,6 +132,8 @@
   g.nodeg:hover .ports{opacity:1;}
   .port{cursor:crosshair;}
   .port:hover{stroke-width:2.5;}
+  .nhandle:hover{stroke-width:2.5;}
+  #tempLayer{pointer-events:none;}
   .edge{cursor:pointer;}
   .ebend{cursor:move;}
   .ebend:hover{stroke-width:2.5;}
@@ -325,7 +327,7 @@
         <circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/>
         <path d="M7 7.5 10.5 16M17 7.5 13.5 16M7.6 6h8.8"/>
       </svg>
-      NetDraw <span class="sub">v1.1.6</span>
+      NetDraw <span class="sub">v1.1.7</span>
     </div>
 
     <div class="tgroup">
@@ -657,6 +659,9 @@ const EFFECTS = {
   vulnerable:  {name:"Vulnerable",         color:"#f59e0b", sev:1, icon:'<path d="M12 3 20 6v6c0 4.6-3.4 7.7-8 9-4.6-1.3-8-4.4-8-9V6z"/><path d="M13 7.5 10 12h4l-3 4.5"/>'},
   suspicious:  {name:"Suspicious Activity",color:"#fb923c", sev:2, icon:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'},
   outage:      {name:"Outage",             color:"#94a3b8", sev:2, icon:'<path d="M12 3v8"/><path d="M6.8 6.8a7.3 7.3 0 1 0 10.4 0"/>'},
+  down:        {name:"Down",               color:"#64748b", sev:2, icon:'<path d="M12 4v14"/><path d="m6.5 12.5 5.5 5.5 5.5-5.5"/>'},
+  missing:     {name:"Missing",            color:"#a855f7", sev:2, icon:'<circle cx="12" cy="12" r="8"/><path d="M9.7 9.5a2.5 2.5 0 1 1 4.2 1.8c-.9.6-1.4 1.1-1.4 2.2M12 17h.01"/>'},
+  unavailable: {name:"Unavailable",        color:"#6b7280", sev:2, icon:'<circle cx="12" cy="12" r="8"/><path d="M8 8l8 8M16 8l-8 8"/>'},
   ddos:        {name:"DDoS",               color:"#f97316", sev:2, icon:'<path d="M12 2.5v5M12 16.5v5M2.5 12h5M16.5 12h5M5 5l3.5 3.5M19 5l-3.5 3.5M5 19l3.5-3.5M19 19l-3.5-3.5"/>'},
   exploit:     {name:"Exploited",          color:"#f43f5e", sev:3, icon:'<path d="M13 2 4.5 13.5H11L9.5 22 19 9.5h-6.5z"/>'},
   infected:    {name:"Malware Infection",  color:"#ef4444", sev:3, icon:'<path d="M12 7.5a4 4 0 0 1 4 4v3a4 4 0 0 1-8 0v-3a4 4 0 0 1 4-4z"/><path d="M12 7.5V5M8 12.5H5.5M18.5 12.5H16M8.6 16 6.5 18M15.4 16l2.1 2"/>'},
@@ -8481,6 +8486,7 @@ function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").rep
 function nodeById(id){ return state.nodes.find(n => n.id === id); }
 function edgeById(id){ return state.edges.find(e => e.id === id); }
 function zoneById(id){ return state.zones.find(z => z.id === id); }
+function endpointById(id){ return nodeById(id) || zoneById(id); }
 function accentOf(n){ return n.accent || TYPES[n.type].accent; }
 function snap(v){ return snapOn ? Math.round(v / SNAP) * SNAP : v; }
 function inZone(n, z){ return n.x > z.x && n.x < z.x + z.w && n.y > z.y && n.y < z.y + z.h; }
@@ -8515,29 +8521,12 @@ function normalizeState(doc){
     if(seen.has(id)) throw new Error("duplicate node id");
     seen.add(id);
     const T = TYPES[n.type];
-    return {...n, id, x:n.x, y:n.y, label: typeof n.label === "string" && n.label.trim() ? n.label : (T.defaultLabel || T.name)};
+    const out = {...n, id, x:n.x, y:n.y, label: typeof n.label === "string" && n.label.trim() ? n.label : (T.defaultLabel || T.name)};
+    if(finiteNum(n.w)) out.w = Math.max(1, n.w);
+    if(finiteNum(n.h)) out.h = Math.max(1, n.h);
+    return out;
   });
   const nodeIds = new Set(nodes.map(n => n.id));
-  const edgeIds = new Set();
-  const edges = doc.edges.map(e => {
-    if(!e || !nodeIds.has(e.a) || !nodeIds.has(e.b)) throw new Error("bad edge");
-    const id = cleanId(e.id, "e");
-    if(edgeIds.has(id)) throw new Error("duplicate edge id");
-    edgeIds.add(id);
-    const bend = e.bend && finiteNum(e.bend.x) && finiteNum(e.bend.y) ? {x:e.bend.x, y:e.bend.y} : undefined;
-    return {
-      ...e,
-      id,
-      label: typeof e.label === "string" ? e.label : "",
-      style: ["solid","dashed","dotted","sneakernet"].includes(e.style) ? e.style : "solid",
-      route: ["curved","straight","elbow"].includes(e.route) ? e.route : "curved",
-      fromPort: cleanPort(e.fromPort),
-      toPort: cleanPort(e.toPort),
-      bend,
-      anim: !!e.anim,
-      arrows: ["none","start","end","both"].includes(e.arrows) ? e.arrows : "none"
-    };
-  });
   const zoneIds = new Set();
   const zones = (Array.isArray(doc.zones) ? doc.zones : []).map(z => {
     if(!z || !finiteNum(z.x) || !finiteNum(z.y) || !finiteNum(z.w) || !finiteNum(z.h)) throw new Error("bad zone");
@@ -8558,6 +8547,28 @@ function normalizeState(doc){
       out.lanes = lanes.length ? lanes : ["Lane 1"];
     }
     return out;
+  });
+  for(const id of zoneIds) if(nodeIds.has(id)) throw new Error("duplicate element id");
+  const endpointIds = new Set([...nodeIds, ...zoneIds]);
+  const edgeIds = new Set();
+  const edges = doc.edges.map(e => {
+    if(!e || !endpointIds.has(e.a) || !endpointIds.has(e.b)) throw new Error("bad edge");
+    const id = cleanId(e.id, "e");
+    if(edgeIds.has(id)) throw new Error("duplicate edge id");
+    edgeIds.add(id);
+    const bend = e.bend && finiteNum(e.bend.x) && finiteNum(e.bend.y) ? {x:e.bend.x, y:e.bend.y} : undefined;
+    return {
+      ...e,
+      id,
+      label: typeof e.label === "string" ? e.label : "",
+      style: ["solid","dashed","dotted","sneakernet"].includes(e.style) ? e.style : "solid",
+      route: ["curved","straight","elbow"].includes(e.route) ? e.route : "curved",
+      fromPort: cleanPort(e.fromPort),
+      toPort: cleanPort(e.toPort),
+      bend,
+      anim: !!e.anim,
+      arrows: ["none","start","end","both"].includes(e.arrows) ? e.arrows : "none"
+    };
   });
   return {nodes, edges, zones, journey:normalizeJourney(doc.journey)};
 }
@@ -8711,7 +8722,7 @@ function metaLines(n){
   if(T.shape) return [];
   return (T.fields || []).filter(f => f !== "notes" && n[f]).map(f => String(n[f])).slice(0, 3);
 }
-function nodeW(n){
+function autoNodeW(n){
   const T = TYPES[n.type];
   if(T.shape){
     const L = n.label.length;
@@ -8724,16 +8735,27 @@ function nodeW(n){
   const need = Math.max(NW, n.label.length * 6.8 + 24, ...metaLines(n).map(s => s.length * 5.9 + 26));
   return clamp(need, NW, 240);
 }
-function nodeH(n){
+function autoNodeH(n){
   const T = TYPES[n.type];
   if(T.shape){
-    if(T.shape === "connector") return nodeW(n);
+    if(T.shape === "connector") return autoNodeW(n);
     if(T.shape === "decision") return 76;
     if(T.shape === "document") return 62;
     return 54;
   }
   return NH + metaLines(n).length * 12.5;
 }
+function minNodeSize(n){
+  const T = TYPES[n.type];
+  if(T.shape){
+    if(T.shape === "connector") return {w:28, h:28};
+    if(T.shape === "decision") return {w:70, h:48};
+    return {w:60, h:38};
+  }
+  return {w:74, h:66};
+}
+function nodeW(n){ return finiteNum(n.w) ? Math.max(minNodeSize(n).w, n.w) : autoNodeW(n); }
+function nodeH(n){ return finiteNum(n.h) ? Math.max(minNodeSize(n).h, n.h) : autoNodeH(n); }
 
 /* ---------- view transform ---------- */
 function applyView(){
@@ -8781,7 +8803,7 @@ function iconSVGString(type, color, size){
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:${color}">${ICONS[iconKey] || ICONS.cloud}</svg>`;
 }
 
-function nodeEffects(n){ return (n.effects || []).filter(k => EFFECTS[k]); }
+function nodeEffects(n){ return (n.effects || []).map(k => k === "unaviable" ? "unavailable" : k).filter(k => EFFECTS[k]); }
 
 function renderNode(n){
   const W = nodeW(n), H = nodeH(n);
@@ -8811,7 +8833,7 @@ function renderNode(n){
       case "manual":     body = el("polygon", {...attrs, points:`0,12 ${W},0 ${W},${H} 0,${H}`}); break;
       case "delay":      body = el("path", {...attrs, d:`M0 0 H ${W - H/2} A ${H/2} ${H/2} 0 0 1 ${W - H/2} ${H} H 0 Z`}); break;
       case "document":   body = el("path", {...attrs, d:`M0 0 H ${W} V ${H-10} C ${W*0.7} ${H-22}, ${W*0.3} ${H+10}, 0 ${H-8} Z`}); break;
-      case "connector":  body = el("circle", {...attrs, cx:W/2, cy:H/2, r:W/2}); break;
+      case "connector":  body = el("ellipse", {...attrs, cx:W/2, cy:H/2, rx:W/2, ry:H/2}); break;
     }
     g.appendChild(body);
     if(T.shape === "predefined"){
@@ -8900,35 +8922,59 @@ function renderNode(n){
     ports.appendChild(el("circle", {class:"port", "data-port":n.id, "data-port-side":side, cx:px, cy:py, r:5, fill:tc("chipBg"), stroke:acc, "stroke-width":1.6}));
   });
   g.appendChild(ports);
+  if(sel) addNodeHandles(g, n, W, H);
   return g;
 }
 
-function portPoint(n, side){
-  const W = nodeW(n), H = nodeH(n);
+function addNodeHandles(g, n, W, H){
+  for(const [x, y, c] of [[0,0,"nw"],[W,0,"ne"],[0,H,"sw"],[W,H,"se"]]){
+    g.appendChild(el("rect", {class:"nhandle", "data-nhandle":c, x:x-5, y:y-5, width:10, height:10, rx:3,
+      fill:tc("chipBg"), stroke:"#7dd3fc", "stroke-width":1.5,
+      cursor: (c === "nw" || c === "se") ? "nwse-resize" : "nesw-resize"}));
+  }
+}
+
+function endpointBounds(o){
+  if(o && TYPES[o.type]){
+    const W = nodeW(o), H = nodeH(o);
+    return {x:o.x - W/2, y:o.y - H/2, w:W, h:H};
+  }
+  if(o && finiteNum(o.w) && finiteNum(o.h)) return {x:o.x, y:o.y, w:o.w, h:o.h};
+  return {x:o.x, y:o.y, w:0, h:0};
+}
+function endpointCenter(o){
+  if(o && TYPES[o.type]) return {x:o.x, y:o.y};
+  const b = endpointBounds(o);
+  return {x:b.x + b.w/2, y:b.y + b.h/2};
+}
+function portPoint(o, side){
+  const b = endpointBounds(o);
   switch(side){
-    case "top": return {x:n.x, y:n.y - H/2};
-    case "right": return {x:n.x + W/2, y:n.y};
-    case "bottom": return {x:n.x, y:n.y + H/2};
-    case "left": return {x:n.x - W/2, y:n.y};
+    case "top": return {x:b.x + b.w/2, y:b.y};
+    case "right": return {x:b.x + b.w, y:b.y + b.h/2};
+    case "bottom": return {x:b.x + b.w/2, y:b.y + b.h};
+    case "left": return {x:b.x, y:b.y + b.h/2};
     default: return null;
   }
 }
-function nearestPortSide(n, p){
+function nearestPortSide(o, p){
   let best = "right", bestDist = Infinity;
   for(const side of PORT_SIDES){
-    const pp = portPoint(n, side);
+    const pp = portPoint(o, side);
     const dist = Math.hypot(p.x - pp.x, p.y - pp.y);
     if(dist < bestDist){ best = side; bestDist = dist; }
   }
   return best;
 }
-function anchor(n, toward){
-  if(!n.id) return {x:n.x, y:n.y};
-  const dx = toward.x - n.x, dy = toward.y - n.y;
-  if(dx === 0 && dy === 0) return {x:n.x, y:n.y};
-  const hw = (n.id ? nodeW(n) : NW)/2 + 5, hh = (n.id ? nodeH(n) : NH)/2 + 5;
+function anchor(o, toward){
+  if(!o.id) return {x:o.x, y:o.y};
+  const c = endpointCenter(o), tc = endpointCenter(toward);
+  const dx = tc.x - c.x, dy = tc.y - c.y;
+  if(dx === 0 && dy === 0) return c;
+  const b = endpointBounds(o);
+  const hw = b.w/2 + 5, hh = b.h/2 + 5;
   const s = Math.min(hw / Math.abs(dx || 1e-9), hh / Math.abs(dy || 1e-9));
-  return {x: n.x + dx * s, y: n.y + dy * s};
+  return {x: c.x + dx * s, y: c.y + dy * s};
 }
 function edgeGeom(a, b, route = "curved", edge = null){
   const p1 = (edge && edge.fromPort && portPoint(a, edge.fromPort)) || anchor(a, b);
@@ -9073,7 +9119,7 @@ function ensureSneak(){
   }
 }
 function renderEdge(e){
-  const a = nodeById(e.a), b = nodeById(e.b);
+  const a = endpointById(e.a), b = endpointById(e.b);
   if(!a || !b) return null;
   const geo = edgeGeom(a, b, e.route, e);
   const sel = selection.has(e.id);
@@ -9463,6 +9509,7 @@ function addNode(type, x, y, label){
 }
 function addEdge(aId, bId, fromPort = "", toPort = ""){
   if(aId === bId) return;
+  if(!endpointById(aId) || !endpointById(bId)) return;
   fromPort = cleanPort(fromPort);
   toPort = cleanPort(toPort);
   if(state.edges.some(e =>
@@ -9653,18 +9700,27 @@ function drawTempEdge(fromNode, wp, fromPort = ""){
 let curLinkTarget = null;
 function markLinkTarget(id){
   if(curLinkTarget === id) return;
+  const hadTarget = curLinkTarget !== null;
   curLinkTarget = id;
+  if(hadTarget) renderAll();
+  if(id === null) return;
   for(const g of nodesLayer.querySelectorAll("g.nodeg")){
     const card = g.querySelector(".card");
     const isTarget = g.getAttribute("data-node") === id;
     if(isTarget){ card.setAttribute("stroke", "#7dd3fc"); card.setAttribute("stroke-width", 2); }
   }
-  if(id === null) renderAll();
+  for(const g of zonesLayer.querySelectorAll("g.zoneg")){
+    const frame = g.querySelector("rect");
+    const isTarget = g.getAttribute("data-zone") === id;
+    if(isTarget){ frame.setAttribute("stroke", "#7dd3fc"); frame.setAttribute("stroke-width", 2.4); }
+  }
 }
-function nodeUnderPointer(e){
+function endpointUnderPointer(e){
   const t = document.elementFromPoint(e.clientX, e.clientY);
-  const g = t && t.closest ? t.closest("g[data-node]") : null;
-  return g ? g.getAttribute("data-node") : null;
+  const ng = t && t.closest ? t.closest("g[data-node]") : null;
+  if(ng) return ng.getAttribute("data-node");
+  const zg = t && t.closest ? t.closest("g[data-zone]") : null;
+  return zg ? zg.getAttribute("data-zone") : null;
 }
 function portUnderPointer(e){
   const t = document.elementFromPoint(e.clientX, e.clientY);
@@ -9726,6 +9782,7 @@ svg.addEventListener("pointerdown", e => {
   }
 
   const portEl = e.target.closest ? e.target.closest("[data-port]") : null;
+  const nHandle = e.target.closest ? e.target.closest("[data-nhandle]") : null;
   const nodeG = e.target.closest ? e.target.closest("g[data-node]") : null;
   const bendHandle = e.target.closest ? e.target.closest("[data-ebend]") : null;
   const edgeG = e.target.closest ? e.target.closest("g[data-edge]") : null;
@@ -9734,16 +9791,18 @@ svg.addEventListener("pointerdown", e => {
 
   // pending click-click connect
   if(pendingFrom){
-    const srcId = typeof pendingFrom === "string" ? pendingFrom : pendingFrom.nodeId;
+    const srcId = typeof pendingFrom === "string" ? pendingFrom : pendingFrom.endpointId;
     const srcPort = typeof pendingFrom === "string" ? "" : pendingFrom.side;
-    const src = nodeById(srcId);
+    const src = endpointById(srcId);
     pendingFrom = null;
     clearTemp();
-    if(nodeG && src){
-      const toId = nodeG.getAttribute("data-node");
+    const targetG = nodeG || zoneG;
+    if(targetG && src){
+      const toId = targetG.getAttribute(nodeG ? "data-node" : "data-zone");
+      const to = endpointById(toId);
       const toPort = portEl && portEl.getAttribute("data-port") === toId
         ? cleanPort(portEl.getAttribute("data-port-side"))
-        : nearestPortSide(nodeById(toId), wp);
+        : nearestPortSide(to, wp);
       addEdge(src.id, toId, srcPort, toPort);
     }
     return;
@@ -9757,12 +9816,26 @@ svg.addEventListener("pointerdown", e => {
     return;
   }
 
+  if(nHandle && nodeG){
+    const n = nodeById(nodeG.getAttribute("data-node"));
+    const c = nHandle.getAttribute("data-nhandle");
+    if(n){
+      const W = nodeW(n), H = nodeH(n);
+      drag = {kind:"nresize", n,
+        fx: c.includes("w") ? n.x + W/2 : n.x - W/2,
+        fy: c.includes("n") ? n.y + H/2 : n.y - H/2,
+        moved:false};
+      svg.setPointerCapture(e.pointerId);
+    }
+    return;
+  }
+
   if(bendHandle){
     const id = bendHandle.getAttribute("data-ebend");
     const ed = edgeById(id);
     if(ed && ed.route === "elbow"){
       if(!(selection.size === 1 && selection.has(id))){ selection = new Set([id]); renderAll(); }
-      const a = nodeById(ed.a), b = nodeById(ed.b);
+      const a = endpointById(ed.a), b = endpointById(ed.b);
       if(a && b && (!ed.bend || !finiteNum(ed.bend.x) || !finiteNum(ed.bend.y))) ed.bend = edgeGeom(a, b, ed.route, ed).bend;
       drag = {kind:"ebend", ed, axis:bendHandle.getAttribute("data-axis") || "xy", moved:false};
       svg.setPointerCapture(e.pointerId);
@@ -9819,6 +9892,11 @@ svg.addEventListener("pointerdown", e => {
       const li = +laneEl.getAttribute("data-lane");
       if(isDoubleClick("zl:" + id + ":" + li, e)){ openEditor({kind:"lane", id, lane:li}); return; }
     } else if(isDoubleClick("z:" + id, e)){ openEditor({kind:"zone", id}); return; }
+    if(tool === "connect"){
+      drag = {kind:"link", from:id, fromPort:nearestPortSide(zoneById(id), wp), clickClick:true, sx:e.clientX, sy:e.clientY};
+      svg.setPointerCapture(e.pointerId);
+      return;
+    }
     if(e.shiftKey){
       selection.has(id) ? selection.delete(id) : selection.add(id);
       renderAll();
@@ -9846,7 +9924,7 @@ svg.addEventListener("pointerdown", e => {
 
 window.addEventListener("pointermove", e => {
   if(pendingFrom){
-    const src = nodeById(typeof pendingFrom === "string" ? pendingFrom : pendingFrom.nodeId);
+    const src = endpointById(typeof pendingFrom === "string" ? pendingFrom : pendingFrom.endpointId);
     if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY), typeof pendingFrom === "string" ? "" : pendingFrom.side);
     return;
   }
@@ -9875,15 +9953,25 @@ window.addEventListener("pointermove", e => {
     }
   }
   else if(drag.kind === "link"){
-    const src = nodeById(drag.from);
+    const src = endpointById(drag.from);
     if(src) drawTempEdge(src, wp, drag.fromPort);
-    const over = nodeUnderPointer(e);
+    const over = endpointUnderPointer(e);
     markLinkTarget(over && over !== drag.from ? over : null);
   }
   else if(drag.kind === "zmove"){
     drag.moved = true;
     drag.z.x = snap(wp.x + drag.ox); drag.z.y = snap(wp.y + drag.oy);
     for(const p of drag.members){ p.n.x = snap(wp.x + p.ox); p.n.y = snap(wp.y + p.oy); }
+    renderAll();
+  }
+  else if(drag.kind === "nresize"){
+    drag.moved = true;
+    const x1 = snap(wp.x), y1 = snap(wp.y);
+    const min = minNodeSize(drag.n);
+    drag.n.w = Math.max(min.w, Math.abs(x1 - drag.fx));
+    drag.n.h = Math.max(min.h, Math.abs(y1 - drag.fy));
+    drag.n.x = x1 < drag.fx ? drag.fx - drag.n.w / 2 : drag.fx + drag.n.w / 2;
+    drag.n.y = y1 < drag.fy ? drag.fy - drag.n.h / 2 : drag.fy + drag.n.h / 2;
     renderAll();
   }
   else if(drag.kind === "zresize"){
@@ -9927,7 +10015,7 @@ window.addEventListener("pointerup", e => {
   const d = drag; drag = null;
   svg.classList.remove("panning");
 
-  if(d.kind === "move" || d.kind === "zmove" || d.kind === "zresize" || d.kind === "ebend"){
+  if(d.kind === "move" || d.kind === "zmove" || d.kind === "nresize" || d.kind === "zresize" || d.kind === "ebend"){
     if(d.kind === "move") tempLayer.innerHTML = "";
     if(d.moved) commit();
   }
@@ -9951,16 +10039,16 @@ window.addEventListener("pointerup", e => {
   }
   else if(d.kind === "link"){
     const port = portUnderPointer(e);
-    const over = nodeUnderPointer(e);
+    const over = endpointUnderPointer(e);
     clearTemp();
     if(over && over !== d.from){
-      const toNode = nodeById(over);
-      const toPort = port && port.nodeId === over ? port.side : nearestPortSide(toNode, toWorld(e.clientX, e.clientY));
+      const to = endpointById(over);
+      const toPort = port && port.nodeId === over ? port.side : nearestPortSide(to, toWorld(e.clientX, e.clientY));
       addEdge(d.from, over, d.fromPort, toPort);
     } else if(d.clickClick && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6){
       // simple click in connect mode → arm click-click linking
-      pendingFrom = {nodeId:d.from, side:d.fromPort};
-      const src = nodeById(pendingFrom.nodeId);
+      pendingFrom = {endpointId:d.from, side:d.fromPort};
+      const src = endpointById(pendingFrom.endpointId);
       if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY), pendingFrom.side);
     } else {
       renderAll();
@@ -10065,7 +10153,7 @@ function openEditor(target){
     val = z.lanes[i];
   } else {
     const ed = edgeById(target.id); if(!ed) return;
-    const a = nodeById(ed.a), b = nodeById(ed.b); if(!a || !b) return;
+    const a = endpointById(ed.a), b = endpointById(ed.b); if(!a || !b) return;
     const m = edgeGeom(a, b, ed.route, ed).mid;
     sp = toScreen(m.x, m.y); val = ed.label;
   }
@@ -10351,7 +10439,7 @@ const FONT_STACK = "ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif";
    CSS animation state at time t into attributes so rasterized frames animate. */
 function cloneLayerMarkup(layer, t){
   const c = layer.cloneNode(true);
-  c.querySelectorAll(".ports, .zhandle, .ebend").forEach(x => x.remove());
+  c.querySelectorAll(".ports, .nhandle, .zhandle, .ebend").forEach(x => x.remove());
   if(t != null){
     const haloOp = (0.22 + 0.63 * (0.5 - 0.5 * Math.cos(2 * Math.PI * t / 1.6))).toFixed(3);
     c.querySelectorAll(".fxhalo").forEach(x => x.setAttribute("stroke-opacity", haloOp));
