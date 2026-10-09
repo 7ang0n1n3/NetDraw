@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.10 - 2026-10-10
+
+- Updated the displayed NetDraw version to `v1.1.10`.
+- Added live item search above the Sections header, with case-insensitive matching by item and section name.
+- Search reveals matching items in collapsed sections and shows a message when no items match.
+- Clearing the search or pressing Escape restores all items and the saved section collapse state.
+- Documented palette search in the README.
+
 ## v1.1.9 - 2026-08-16
 
 - Updated the displayed NetDraw version to `v1.1.9`.

@@ -1,6 +1,6 @@
 # NetDraw
 
-Current version: `v1.1.9`
+Current version: `v1.1.10`
 
 NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
 
@@ -30,6 +30,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 - Pan by dragging empty canvas, zoom with the mouse wheel or toolbar, and fit the diagram to view.
 - Toggle light and dark mode from the top toolbar.
 - Collapse and expand individual palette sections, or use the top palette control to collapse or expand all sections at once.
+- Search palette items by item or section name using the search field above Sections.
 - Save and load diagrams as one JSON file, including all pages.
 - Reset the full document from the upper-right trash button after a warning confirmation.
 - Export diagrams as PNG, SVG, or animated GIF. PNG and GIF exports include NetDraw and the current version in image software metadata.
@@ -63,6 +64,8 @@ Connections can attach to the `Top`, `Right`, `Bottom`, or `Left` point on each 
 Arrow options are `None`, `Start with`, `End with`, and `Two-way`. Animated traffic flow follows the selected start or end arrow direction; two-way arrows keep the current single-line animation behavior.
 
 ## Objects
+
+Use the search field above `Sections` in the left palette to filter items as you type. Search ignores case and matches item and section names; use multiple words to narrow results, such as `azure storage`. Matching items appear even in collapsed sections. Clear the field or press `Escape` to restore all items and the saved section collapse state. Click a matching item or drag it onto the canvas to add it.
 
 Select a node to show corner resize handles, then drag a handle to resize the object. Existing diagrams keep their automatic object sizes until an object is resized.
 
