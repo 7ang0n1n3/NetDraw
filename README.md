@@ -1,6 +1,6 @@
 # NetDraw
 
-Current version: `v1.1.10`
+Current version: `v1.1.11`
 
 NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
 
@@ -20,7 +20,7 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 
 - Drag network, server, endpoint, people, Docker, HULFT, A-AUTO, place, process, and threat objects onto the canvas.
 - Add AWS, Google Cloud Platform, Azure, HULFT, and A-AUTO service objects from palette sections below Docker, with cloud service names sourced from the official provider icon packages.
-- Connect nodes and zones with styled links, labels, structured routes, arrows, animated traffic, and sneakernet paths.
+- Draw curved, straight, or angled connections between nodes, zones, and free canvas points, with labels, arrows, animated traffic, and sneakernet paths.
 - Create zones and swimlanes for network segments and process lanes.
 - Create multiple pages from bottom tabs; each page keeps its own canvas and view.
 - Build page-level journey walkthroughs with ordered reveal/highlight steps and captions.
@@ -57,7 +57,11 @@ Use the tabs along the bottom edge of the canvas to switch pages. Click `+` to a
 
 Select a connection to edit its label, line style, route, source point, destination point, arrow direction, and animated traffic flow from the properties panel.
 
-Connection routes can be `Curved`, `Straight`, or `Elbow`. Existing diagrams default to `Curved`. For `Elbow` routes, select the connection and drag the bend handles on the line to move the structured path.
+Choose `Curved`, `Straight`, or `Angled (elbow)` from the route selector beside the Connect tool in the top toolbar. Choosing a route activates Connect mode: click two objects to connect them, or drag between their side points. The preview and new connections use the selected route until you choose another.
+
+To change an existing connection, select it and use `Line route` in the properties panel. Existing diagrams default to `Curved`. For `Angled (elbow)` routes, select the connection and drag the bend handles on the line to adjust its right-angle path.
+
+Connections can be left unfinished: release a dragged connection on empty canvas, or click an object and then an empty spot in Connect mode. You can also draw a line between two empty canvas points. Select an unfinished line to reveal its free endpoint handles; drag a handle to move the endpoint or attach it to an object or zone later. Free endpoints are included in saved JSON and image exports. Press `Escape` to cancel a connection before placing its endpoint.
 
 Connections can attach to the `Top`, `Right`, `Bottom`, or `Left` point on each object or zone. Drag from a visible object side point or use Connect mode on a zone to create a pinned connection, or change `From point` and `To point` on an existing connection.
 

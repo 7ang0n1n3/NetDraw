@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.11 - 2026-10-16
+
+- Updated the displayed NetDraw version to `v1.1.11`.
+- Added unfinished and free-standing connections, with movable free endpoint handles that can attach to objects later; preserved free endpoints in save/load, copy/paste, duplication, and exports.
+- Added a route selector beside the Connect tool to draw curved, straight, or angled (elbow) connections directly, with matching live previews.
+- Clarified the angled route label and documented creating and editing connections.
+
 ## v1.1.10 - 2026-10-10
 
 - Updated the displayed NetDraw version to `v1.1.10`.

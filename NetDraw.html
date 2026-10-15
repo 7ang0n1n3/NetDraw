@@ -51,6 +51,12 @@
   button.active{background:var(--button-active); color:var(--accent);}
   button:disabled{opacity:.35; cursor:default; background:transparent; color:var(--muted);}
   button svg{display:block; flex:0 0 auto;}
+  #connectRoute{
+    height:30px; max-width:126px; padding:0 5px; border:1px solid var(--border);
+    border-radius:7px; background:var(--panel2); color:var(--text); font:inherit;
+    cursor:pointer;
+  }
+  #connectRoute:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
   #zoomPct{min-width:52px; font-variant-numeric:tabular-nums;}
   .spacer{flex:1;}
   .btn-text{font-weight:600;}
@@ -337,7 +343,7 @@
         <circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/>
         <path d="M7 7.5 10.5 16M17 7.5 13.5 16M7.6 6h8.8"/>
       </svg>
-        NetDraw <span class="sub">v1.1.10</span>
+        NetDraw <span class="sub">v1.1.11</span>
     </div>
 
     <div class="tgroup">
@@ -347,6 +353,11 @@
       <button id="toolConnect" title="Connect  (C)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="5.5" cy="18.5" r="2.8"/><circle cx="18.5" cy="5.5" r="2.8"/><path d="M7.6 16.4 16.4 7.6"/></svg>
       </button>
+      <select id="connectRoute" aria-label="New connection route" title="Choose a route, then draw between objects or empty canvas points">
+        <option value="curved">Curved</option>
+        <option value="straight">Straight</option>
+        <option value="elbow">Angled (elbow)</option>
+      </select>
       <button id="toolZone" title="Draw zone / network segment  (Z)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3.5" y="5" width="17" height="14" rx="3.5" stroke-dasharray="4.2 3.2"/></svg>
       </button>
@@ -8500,6 +8511,9 @@ function nodeById(id){ return state.nodes.find(n => n.id === id); }
 function edgeById(id){ return state.edges.find(e => e.id === id); }
 function zoneById(id){ return state.zones.find(z => z.id === id); }
 function endpointById(id){ return nodeById(id) || zoneById(id); }
+function cleanPoint(p){ return p && finiteNum(p.x) && finiteNum(p.y) ? {x:p.x, y:p.y} : null; }
+function edgeEndpoint(e, end){ return endpointById(e[end]) || e[end === "a" ? "fromPoint" : "toPoint"]; }
+function linkSource(link){ return endpointById(link.from || link.endpointId) || link.fromPoint; }
 function accentOf(n){ return n.accent || TYPES[n.type].accent; }
 function snap(v){ return snapOn ? Math.round(v / SNAP) * SNAP : v; }
 function inZone(n, z){ return n.x > z.x && n.x < z.x + z.w && n.y > z.y && n.y < z.y + z.h; }
@@ -8565,7 +8579,8 @@ function normalizeState(doc){
   const endpointIds = new Set([...nodeIds, ...zoneIds]);
   const edgeIds = new Set();
   const edges = doc.edges.map(e => {
-    if(!e || !endpointIds.has(e.a) || !endpointIds.has(e.b)) throw new Error("bad edge");
+    if(!e || !(endpointIds.has(e.a) || (e.a == null && cleanPoint(e.fromPoint))) ||
+      !(endpointIds.has(e.b) || (e.b == null && cleanPoint(e.toPoint)))) throw new Error("bad edge");
     const id = cleanId(e.id, "e");
     if(endpointIds.has(id) || edgeIds.has(id)) throw new Error("duplicate element id");
     edgeIds.add(id);
@@ -8576,8 +8591,12 @@ function normalizeState(doc){
       label: typeof e.label === "string" ? e.label : "",
       style: ["solid","dashed","dotted","sneakernet"].includes(e.style) ? e.style : "solid",
       route: ["curved","straight","elbow"].includes(e.route) ? e.route : "curved",
-      fromPort: cleanPort(e.fromPort),
-      toPort: cleanPort(e.toPort),
+      a: e.a == null ? null : e.a,
+      b: e.b == null ? null : e.b,
+      fromPoint: e.a == null ? cleanPoint(e.fromPoint) : null,
+      toPoint: e.b == null ? cleanPoint(e.toPoint) : null,
+      fromPort: e.a == null ? "" : cleanPort(e.fromPort),
+      toPort: e.b == null ? "" : cleanPort(e.toPort),
       bend,
       anim: !!e.anim,
       arrows: ["none","start","end","both"].includes(e.arrows) ? e.arrows : "none"
@@ -9164,7 +9183,7 @@ function ensureSneak(){
   }
 }
 function renderEdge(e){
-  const a = endpointById(e.a), b = endpointById(e.b);
+  const a = edgeEndpoint(e, "a"), b = edgeEndpoint(e, "b");
   if(!a || !b) return null;
   const geo = edgeGeom(a, b, e.route, e);
   const sel = selection.has(e.id);
@@ -9187,6 +9206,13 @@ function renderEdge(e){
     const t = el("text", {x:geo.mid.x, y:geo.mid.y + 3.6, "text-anchor":"middle", "font-size":10.5, fill:tc("edgeLabelText")});
     t.textContent = e.label;
     g.appendChild(t);
+  }
+  if(sel){
+    for(const [end, p] of [["a", geo.p1], ["b", geo.p2]]){
+      if(e[end]) continue;
+      g.appendChild(el("circle", {"data-eend":e.id, "data-end":end, cx:p.x, cy:p.y, r:6,
+        fill:tc("chipBg"), stroke:"#7dd3fc", "stroke-width":2, cursor:"crosshair"}));
+    }
   }
   if(sel && e.route === "elbow"){
     for(const h of (geo.handles || [])){
@@ -9552,17 +9578,20 @@ function addNode(type, x, y, label){
   renderAll();
   return n;
 }
-function addEdge(aId, bId, fromPort = "", toPort = ""){
-  if(aId === bId) return;
-  if(!endpointById(aId) || !endpointById(bId)) return;
-  fromPort = cleanPort(fromPort);
-  toPort = cleanPort(toPort);
-  if(state.edges.some(e =>
+function addEdge(aId, bId, fromPort = "", toPort = "", fromPoint = null, toPoint = null){
+  if(aId && aId === bId) return;
+  fromPoint = aId ? null : cleanPoint(fromPoint);
+  toPoint = bId ? null : cleanPoint(toPoint);
+  if(!(endpointById(aId) || fromPoint) || !(endpointById(bId) || toPoint)) return;
+  if(fromPoint && toPoint && Math.hypot(toPoint.x-fromPoint.x, toPoint.y-fromPoint.y) < 6) return;
+  fromPort = aId ? cleanPort(fromPort) : "";
+  toPort = bId ? cleanPort(toPort) : "";
+  if(aId && bId && state.edges.some(e =>
     (e.a === aId && e.b === bId && cleanPort(e.fromPort) === fromPort && cleanPort(e.toPort) === toPort) ||
     (e.a === bId && e.b === aId && cleanPort(e.fromPort) === toPort && cleanPort(e.toPort) === fromPort)
   )) return;
-  const e = {id:uid("e"), a:aId, b:bId, label:"", style:"solid", route:"curved",
-    fromPort, toPort, anim:false, arrows:"none"};
+  const e = {id:uid("e"), a:aId, b:bId, label:"", style:"solid", route:$("connectRoute").value,
+    fromPort, toPort, fromPoint, toPoint, anim:false, arrows:"none"};
   state.edges.push(e);
   commit();
   selection = new Set([e.id]);
@@ -9581,20 +9610,22 @@ function deleteSelection(){
 function buildSelectionClipboard(){
   const nodes = state.nodes.filter(n => selection.has(n.id));
   const zones = state.zones.filter(z => selection.has(z.id));
-  if(!nodes.length && !zones.length) return null;
   const endpointIds = new Set([...nodes.map(n => n.id), ...zones.map(z => z.id)]);
+  const edges = state.edges.filter(e => (!e.a || endpointIds.has(e.a)) && (!e.b || endpointIds.has(e.b)) &&
+    (selection.has(e.id) || endpointIds.has(e.a) || endpointIds.has(e.b)));
+  if(!nodes.length && !zones.length && !edges.length) return null;
   return {
     nodes:JSON.parse(JSON.stringify(nodes)),
     zones:JSON.parse(JSON.stringify(zones)),
-    edges:JSON.parse(JSON.stringify(state.edges.filter(e => endpointIds.has(e.a) && endpointIds.has(e.b))))
+    edges:JSON.parse(JSON.stringify(edges))
   };
 }
 function copySelection(){
   const clip = buildSelectionClipboard();
-  if(!clip){ toast("Select nodes or zones to copy"); return; }
+  if(!clip){ toast("Select objects or free lines to copy"); return; }
   diagramClipboard = clip;
   pasteCount = 0;
-  const total = clip.nodes.length + clip.zones.length;
+  const total = clip.nodes.length + clip.zones.length + clip.edges.length;
   toast(`Copied ${total} item${total === 1 ? "" : "s"}`);
 }
 function pasteClipboard(){
@@ -9618,20 +9649,28 @@ function pasteClipboard(){
     return c;
   });
   const edges = diagramClipboard.edges
-    .filter(e => map[e.a] && map[e.b])
-    .map(e => ({...JSON.parse(JSON.stringify(e)), id:uid("e"), a:map[e.a], b:map[e.b]}));
+    .filter(e => (!e.a || map[e.a]) && (!e.b || map[e.b]))
+    .map(e => cloneEdgeOffset(e, map, offset));
   state.zones.push(...zones);
   state.edges.push(...edges);
   state.nodes.push(...nodes);
   pasteCount += 1;
-  selection = new Set([...zones.map(z => z.id), ...nodes.map(n => n.id)]);
+  selection = new Set([...zones.map(z => z.id), ...nodes.map(n => n.id), ...edges.map(e => e.id)]);
   commit();
   renderAll();
+}
+function cloneEdgeOffset(e, map, offset){
+  const c = {...JSON.parse(JSON.stringify(e)), id:uid("e"), a:map[e.a] || null, b:map[e.b] || null};
+  for(const key of ["fromPoint", "toPoint", "bend"]){
+    if(c[key]) c[key] = {x:c[key].x + offset, y:c[key].y + offset};
+  }
+  return c;
 }
 function duplicateSelection(){
   const picked = state.nodes.filter(n => selection.has(n.id));
   const zPicked = state.zones.filter(z => selection.has(z.id));
-  if(!picked.length && !zPicked.length) return;
+  const freePicked = state.edges.filter(e => !e.a && !e.b && selection.has(e.id));
+  if(!picked.length && !zPicked.length && !freePicked.length) return;
   const map = {};
   const clones = picked.map(n => {
     const c = JSON.parse(JSON.stringify(n));
@@ -9650,11 +9689,12 @@ function duplicateSelection(){
     return c;
   });
   state.zones.push(...zClones);
-  for(const e of state.edges.filter(e => map[e.a] && map[e.b]))
-    state.edges.push({...JSON.parse(JSON.stringify(e)), id:uid("e"), a:map[e.a], b:map[e.b]});
+  const edges = state.edges.filter(e => (!e.a || map[e.a]) && (!e.b || map[e.b]) &&
+    (map[e.a] || map[e.b] || selection.has(e.id))).map(e => cloneEdgeOffset(e, map, 30));
+  state.edges.push(...edges);
   state.nodes.push(...clones);
   commit();
-  selection = new Set([...clones.map(c => c.id), ...zClones.map(c => c.id)]);
+  selection = new Set([...clones.map(c => c.id), ...zClones.map(c => c.id), ...edges.map(e => e.id)]);
   renderAll();
 }
 function reorderList(list, mode){
@@ -9844,7 +9884,7 @@ function clearTemp(){ tempLayer.innerHTML = ""; uiLayer.innerHTML = ""; markLink
 function drawTempEdge(fromNode, wp, fromPort = ""){
   tempLayer.innerHTML = "";
   const fake = {x:wp.x, y:wp.y};
-  const geo = edgeGeom(fromNode, fake, "curved", {fromPort});
+  const geo = edgeGeom(fromNode, fake, $("connectRoute").value, {fromPort});
   tempLayer.appendChild(el("path", {d:geo.d, fill:"none", stroke:"#7dd3fc", "stroke-width":2,
     "stroke-dasharray":"6 6", "stroke-linecap":"round", opacity:.9}));
   tempLayer.appendChild(el("circle", {cx:wp.x, cy:wp.y, r:4, fill:"#7dd3fc"}));
@@ -9868,14 +9908,14 @@ function markLinkTarget(id){
   }
 }
 function endpointUnderPointer(e){
-  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const t = document.elementsFromPoint(e.clientX, e.clientY).find(t => t.closest && t.closest("g[data-node], g[data-zone]"));
   const ng = t && t.closest ? t.closest("g[data-node]") : null;
   if(ng) return ng.getAttribute("data-node");
   const zg = t && t.closest ? t.closest("g[data-zone]") : null;
   return zg ? zg.getAttribute("data-zone") : null;
 }
 function portUnderPointer(e){
-  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const t = document.elementsFromPoint(e.clientX, e.clientY).find(t => t.closest && t.closest("[data-port]"));
   const p = t && t.closest ? t.closest("[data-port]") : null;
   if(!p) return null;
   return {nodeId:p.getAttribute("data-port"), side:cleanPort(p.getAttribute("data-port-side"))};
@@ -9937,6 +9977,7 @@ svg.addEventListener("pointerdown", e => {
   const nHandle = e.target.closest ? e.target.closest("[data-nhandle]") : null;
   const nodeG = e.target.closest ? e.target.closest("g[data-node]") : null;
   const bendHandle = e.target.closest ? e.target.closest("[data-ebend]") : null;
+  const endHandle = e.target.closest ? e.target.closest("[data-eend]") : null;
   const edgeG = e.target.closest ? e.target.closest("g[data-edge]") : null;
   const zHandle = e.target.closest ? e.target.closest("[data-zhandle]") : null;
   const zoneG = e.target.closest ? e.target.closest("g[data-zone]") : null;
@@ -9945,7 +9986,8 @@ svg.addEventListener("pointerdown", e => {
   if(pendingFrom){
     const srcId = typeof pendingFrom === "string" ? pendingFrom : pendingFrom.endpointId;
     const srcPort = typeof pendingFrom === "string" ? "" : pendingFrom.side;
-    const src = endpointById(srcId);
+    const src = typeof pendingFrom === "string" ? endpointById(srcId) : linkSource(pendingFrom);
+    const fromPoint = typeof pendingFrom === "string" ? null : pendingFrom.fromPoint;
     pendingFrom = null;
     clearTemp();
     const targetG = nodeG || zoneG;
@@ -9955,7 +9997,9 @@ svg.addEventListener("pointerdown", e => {
       const toPort = portEl && portEl.getAttribute("data-port") === toId
         ? cleanPort(portEl.getAttribute("data-port-side"))
         : nearestPortSide(to, wp);
-      addEdge(src.id, toId, srcPort, toPort);
+      addEdge(src.id || null, toId, srcPort, toPort, fromPoint);
+    } else if(src){
+      addEdge(src.id || null, null, srcPort, "", fromPoint, {x:snap(wp.x), y:snap(wp.y)});
     }
     return;
   }
@@ -9964,6 +10008,12 @@ svg.addEventListener("pointerdown", e => {
     // drag out a new connection from a port
     const id = portEl.getAttribute("data-port");
     drag = {kind:"link", from:id, fromPort:cleanPort(portEl.getAttribute("data-port-side"))};
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+
+  if(endHandle){
+    drag = {kind:"eend", ed:edgeById(endHandle.getAttribute("data-eend")), end:endHandle.getAttribute("data-end"), moved:false};
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -9987,7 +10037,7 @@ svg.addEventListener("pointerdown", e => {
     const ed = edgeById(id);
     if(ed && ed.route === "elbow"){
       if(!(selection.size === 1 && selection.has(id))){ selection = new Set([id]); renderAll(); }
-      const a = endpointById(ed.a), b = endpointById(ed.b);
+      const a = edgeEndpoint(ed, "a"), b = edgeEndpoint(ed, "b");
       if(a && b && (!ed.bend || !finiteNum(ed.bend.x) || !finiteNum(ed.bend.y))) ed.bend = edgeGeom(a, b, ed.route, ed).bend;
       drag = {kind:"ebend", ed, axis:bendHandle.getAttribute("data-axis") || "xy", moved:false};
       svg.setPointerCapture(e.pointerId);
@@ -10063,6 +10113,13 @@ svg.addEventListener("pointerdown", e => {
     return;
   }
 
+  if(tool === "connect"){
+    drag = {kind:"link", from:null, fromPoint:{x:snap(wp.x), y:snap(wp.y)}, fromPort:"",
+      clickClick:true, sx:e.clientX, sy:e.clientY};
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+
   // Empty canvas: drag to pan by default; Shift+drag keeps marquee selection available.
   if(tool === "select"){
     drag = e.shiftKey
@@ -10076,7 +10133,7 @@ svg.addEventListener("pointerdown", e => {
 
 window.addEventListener("pointermove", e => {
   if(pendingFrom){
-    const src = endpointById(typeof pendingFrom === "string" ? pendingFrom : pendingFrom.endpointId);
+    const src = typeof pendingFrom === "string" ? endpointById(pendingFrom) : linkSource(pendingFrom);
     if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY), typeof pendingFrom === "string" ? "" : pendingFrom.side);
     return;
   }
@@ -10105,10 +10162,16 @@ window.addEventListener("pointermove", e => {
     }
   }
   else if(drag.kind === "link"){
-    const src = endpointById(drag.from);
+    const src = linkSource(drag);
     if(src) drawTempEdge(src, wp, drag.fromPort);
     const over = endpointUnderPointer(e);
     markLinkTarget(over && over !== drag.from ? over : null);
+  }
+  else if(drag.kind === "eend"){
+    drag.moved = true;
+    drag.ed[drag.end === "a" ? "fromPoint" : "toPoint"] = {x:snap(wp.x), y:snap(wp.y)};
+    renderAll();
+    markLinkTarget(endpointUnderPointer(e));
   }
   else if(drag.kind === "zmove"){
     drag.moved = true;
@@ -10167,7 +10230,22 @@ window.addEventListener("pointerup", e => {
   const d = drag; drag = null;
   svg.classList.remove("panning");
 
-  if(d.kind === "move" || d.kind === "zmove" || d.kind === "nresize" || d.kind === "zresize" || d.kind === "ebend"){
+  if(d.kind === "eend"){
+    if(d.moved){
+      const over = endpointUnderPointer(e), opposite = d.end === "a" ? "b" : "a";
+      if(over && over !== d.ed[opposite]){
+        const port = portUnderPointer(e);
+        d.ed[d.end] = over;
+        d.ed[d.end === "a" ? "fromPoint" : "toPoint"] = null;
+        d.ed[d.end === "a" ? "fromPort" : "toPort"] = port && port.nodeId === over
+          ? port.side : nearestPortSide(endpointById(over), toWorld(e.clientX, e.clientY));
+      }
+      commit();
+    }
+    clearTemp();
+    renderAll();
+  }
+  else if(d.kind === "move" || d.kind === "zmove" || d.kind === "nresize" || d.kind === "zresize" || d.kind === "ebend"){
     if(d.kind === "move") tempLayer.innerHTML = "";
     if(d.moved) commit();
   }
@@ -10196,12 +10274,15 @@ window.addEventListener("pointerup", e => {
     if(over && over !== d.from){
       const to = endpointById(over);
       const toPort = port && port.nodeId === over ? port.side : nearestPortSide(to, toWorld(e.clientX, e.clientY));
-      addEdge(d.from, over, d.fromPort, toPort);
+      addEdge(d.from, over, d.fromPort, toPort, d.fromPoint);
     } else if(d.clickClick && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6){
       // simple click in connect mode → arm click-click linking
-      pendingFrom = {endpointId:d.from, side:d.fromPort};
-      const src = endpointById(pendingFrom.endpointId);
+      pendingFrom = {endpointId:d.from, side:d.fromPort, fromPoint:d.fromPoint};
+      const src = linkSource(pendingFrom);
       if(src) drawTempEdge(src, toWorld(e.clientX, e.clientY), pendingFrom.side);
+    } else if(!over){
+      const wp = toWorld(e.clientX, e.clientY);
+      addEdge(d.from, null, d.fromPort, "", d.fromPoint, {x:snap(wp.x), y:snap(wp.y)});
     } else {
       renderAll();
     }
@@ -10248,7 +10329,7 @@ function zoomBy(f){
   applyView();
 }
 function contentBounds(){
-  if(!state.nodes.length && !state.zones.length) return null;
+  if(!state.nodes.length && !state.zones.length && !state.edges.length) return null;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for(const n of state.nodes){
     const hw = nodeW(n)/2, hh = nodeH(n)/2;
@@ -10258,6 +10339,15 @@ function contentBounds(){
   for(const z of state.zones){
     x0 = Math.min(x0, z.x); x1 = Math.max(x1, z.x + z.w);
     y0 = Math.min(y0, z.y - 14); y1 = Math.max(y1, z.y + z.h);   // -14: zone label tag sits above the border
+  }
+  for(const e of state.edges){
+    const a = edgeEndpoint(e, "a"), b = edgeEndpoint(e, "b");
+    if(!a || !b) continue;
+    const geo = edgeGeom(a, b, e.route, e);
+    for(const p of [geo.p1, geo.c1, geo.c2, geo.p2, ...(geo.handles || [])]){
+      x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
+      y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+    }
   }
   return {x0, y0, x1, y1};
 }
@@ -10305,7 +10395,7 @@ function openEditor(target){
     val = z.lanes[i];
   } else {
     const ed = edgeById(target.id); if(!ed) return;
-    const a = endpointById(ed.a), b = endpointById(ed.b); if(!a || !b) return;
+    const a = edgeEndpoint(ed, "a"), b = edgeEndpoint(ed, "b"); if(!a || !b) return;
     const m = edgeGeom(a, b, ed.route, ed).mid;
     sp = toScreen(m.x, m.y); val = ed.label;
   }
@@ -10487,10 +10577,10 @@ function updateProps(){
         <select id="pRoute">
           <option value="curved" ${ed.route === "curved" || !ed.route ? "selected" : ""}>Curved</option>
           <option value="straight" ${ed.route === "straight" ? "selected" : ""}>Straight</option>
-          <option value="elbow" ${ed.route === "elbow" ? "selected" : ""}>Elbow</option>
+          <option value="elbow" ${ed.route === "elbow" ? "selected" : ""}>Angled (elbow)</option>
         </select></div>
       <div class="row"><label>From point</label>
-        <select id="pFromPort">
+        <select id="pFromPort" ${!ed.a ? "disabled" : ""}>
           <option value="" ${!ed.fromPort ? "selected" : ""}>Auto</option>
           <option value="top" ${ed.fromPort === "top" ? "selected" : ""}>Top</option>
           <option value="right" ${ed.fromPort === "right" ? "selected" : ""}>Right</option>
@@ -10498,7 +10588,7 @@ function updateProps(){
           <option value="left" ${ed.fromPort === "left" ? "selected" : ""}>Left</option>
         </select></div>
       <div class="row"><label>To point</label>
-        <select id="pToPort">
+        <select id="pToPort" ${!ed.b ? "disabled" : ""}>
           <option value="" ${!ed.toPort ? "selected" : ""}>Auto</option>
           <option value="top" ${ed.toPort === "top" ? "selected" : ""}>Top</option>
           <option value="right" ${ed.toPort === "right" ? "selected" : ""}>Right</option>
@@ -10513,6 +10603,7 @@ function updateProps(){
           <option value="both" ${ed.arrows === "both" ? "selected" : ""}>Two-way ↔</option>
         </select></div>
       <div class="row"><label class="checkrow"><input type="checkbox" id="pAnim" ${ed.anim ? "checked" : ""}> Animated traffic flow</label></div>
+      ${!ed.a || !ed.b ? '<div class="row">Drag a free endpoint handle to move it or attach it to an object.</div>' : ""}
       ${orderControls()}
       <button class="danger" id="pDelete">Delete connection</button>`;
     propsEl.querySelector("#pLabel").addEventListener("change", e => { ed.label = e.target.value.trim(); commit(); renderAll(); });
@@ -10681,7 +10772,7 @@ function withGifSoftware(bytes){
    CSS animation state at time t into attributes so rasterized frames animate. */
 function cloneLayerMarkup(layer, t){
   const c = layer.cloneNode(true);
-  c.querySelectorAll(".ports, .nhandle, .zhandle, .ebend").forEach(x => x.remove());
+  c.querySelectorAll(".ports, .nhandle, .zhandle, .ebend, [data-eend]").forEach(x => x.remove());
   if(t != null){
     const haloOp = (0.22 + 0.63 * (0.5 - 0.5 * Math.cos(2 * Math.PI * t / 1.6))).toFixed(3);
     c.querySelectorAll(".fxhalo").forEach(x => x.setAttribute("stroke-opacity", haloOp));
@@ -11099,6 +11190,7 @@ function importJSON(file){
 /* ---------- toolbar wiring ---------- */
 $("toolSelect").onclick = () => setTool("select");
 $("toolConnect").onclick = () => setTool("connect");
+$("connectRoute").onchange = () => setTool("connect");
 $("toolZone").onclick = () => setTool("zone");
 $("toolLane").onclick = () => setTool("lane");
 $("toolPan").onclick = () => setTool("pan");
