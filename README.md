@@ -1,8 +1,8 @@
 # NetDraw
 
-Current version: `v1.1.11`
+Current version: `v1.1.12`
 
-NetDraw is a self-contained browser-based network diagram editor. The app lives in `NetDraw.html` and runs locally without a build step or server.
+NetDraw is a self-contained browser-based network diagram editor. The original app lives in `NetDraw.html` and runs locally without a build step or server. `NetDraw-shared-folder.html` is a standalone alternative that lets multiple clients exchange diagram updates through a shared folder.
 
 This project is based on `mr-r3b00t.github.io/net_draw/` with enhancements.
 
@@ -35,6 +35,53 @@ If `xdg-open` is not available, open the file from your browser with `File -> Op
 - Reset the full document from the upper-right trash button after a warning confirmation.
 - Export diagrams as PNG, SVG, or animated GIF. PNG and GIF exports include NetDraw and the current version in image software metadata.
 - Record the visible canvas as video with optional microphone or music audio; supported browsers offer available WebM/MP4 recording formats.
+
+## Shared Folder Collaboration
+
+Open `NetDraw-shared-folder.html` directly in a current desktop Chrome or Edge browser with folder access enabled. All code is embedded in this HTML copy; no collaboration server or additional scripts are required. Browser policies may restrict folder access. API reference: https://developer.chrome.com/docs/capabilities/web-apis/file-system-access
+
+### Open the same diagram on two computers
+
+1. Make the same shared folder available on both computers, using an operating-system-mounted network share (SMB/NAS) or a locally synced folder. Both users need read/write access. A web folder URL cannot be selected directly; mount or sync it first.
+2. User A opens the shared-folder HTML copy, clicks **Shared folder**, chooses **Choose shared folder**, and grants the browser read/write access.
+3. Enter a diagram name and click **Create from this canvas** to create a shared document containing every page in the current canvas.
+4. User B opens their HTML copy, chooses the same shared folder, and opens the named diagram from the list. Use **Refresh list** if the files are still arriving.
+5. Edit normally. Changes write automatically, and clients check for new files every two seconds when active. **Save to folder** or `Ctrl+S` requests an immediate check. Export/import is not required for routine sharing.
+
+Each user can keep their HTML copy locally. Reopening a shared diagram after restarting the browser requires choosing the shared folder and diagram again.
+
+### Files and concurrent changes
+
+NetDraw creates a dedicated structure inside the selected folder:
+
+```text
+NetDrawShared/
+  <document UUID>/
+    document.json           Initial document, written once
+    changes/
+      <change UUID>.json    An immutable update
+      <change UUID>.json    Another client's update
+```
+
+Clients write separate change files instead of overwriting a common diagram file. Both clients merge the same history in deterministic order. Preserve the initial document and the complete `changes` directory when backing up or syncing; do not edit, rename, delete, or selectively exclude files inside a shared document directory.
+
+- Changes to different objects or different properties merge.
+- Causally later changes take precedence. Concurrent changes to the same property resolve by logical sequence number and then change ID, so clients converge regardless of arrival order or clock differences. The last physical mouse movement is not guaranteed to win.
+- Deletion wins over stale edits to a deleted object or page. Concurrent page deletions that leave no pages produce a blank **Recovered page**.
+- Journey step lists and drawing-order lists are whole values; competing edits within the same list resolve as one value. Concurrent object additions remain present.
+- Active page, pan, zoom, and selection stay personal. Remote updates wait during an active interaction or presentation. Applying a remote update clears snapshot undo history to avoid restoring old shared content.
+
+### Recovery and limitations
+
+Committed changes are backed up in browser storage before being queued for writing. If the folder becomes unavailable, keep editing in the open tab; **Updates paused** indicates a problem. Reconnect the folder and use **Shared folder → Check / retry**, or wait for an automatic check. After a reload, choose the same folder and diagram to recover pending changes from that browser. Clearing browser storage or changing profiles removes access to that recovery queue. If browser storage fills up, keep the tab open and download a backup.
+
+**Up to date with folder** means local changes were written and the currently visible folder was scanned. A cloud provider may still be uploading/downloading files, and background tabs may poll less often. Delivery speed depends on the share or sync provider.
+
+Use **Download backup** in the Shared folder dialog for a conventional JSON snapshot. **Disconnect** waits for pending writes before returning the canvas to local-draft mode. JSON import is disabled while a shared document is open. This copy uses separate local-draft browser storage from the original application.
+
+This is a prototype without collaborator cursors, user accounts, object locks, conflict-choice dialogs, or a history browser. Folder permissions control access. The complete change history is retained and replayed without compaction; individual files are limited to 8 MB, and browser recovery storage has its own quota.
+
+Validation covered two browser clients using real shared browser directory handles, synchronization with HTTP networking disabled, unavailable-folder recovery after reload, concurrent merges, and real disk-file exchange. An actual NAS/SMB server or cloud sync provider still needs validation on the target machines.
 
 ## Local Browser Storage
 
@@ -127,7 +174,8 @@ Use `Journey` to create a guided walkthrough for the current page. Add steps, pi
 
 ## Project Layout
 
-- `NetDraw.html`: Main application.
+- `NetDraw.html`: Original local application.
+- `NetDraw-shared-folder.html`: Standalone shared-folder collaboration copy.
 - `README.md`: Project usage notes.
 - `CHANGELOG.md`: Notable changes.
 - `LICENSE`: Project license.

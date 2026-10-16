@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.12 - 2026-10-17
+
+- Updated the displayed version in the original application and new shared-folder copy to `v1.1.12`.
+- Added standalone `NetDraw-shared-folder.html` with browser-approved shared folder access, shared diagram creation/opening, automatic change exchange, and direct Save to folder support.
+- Added immutable change files and deterministic merging of independent object/property changes without overwriting a common diagram file or requiring a collaboration server.
+- Added browser-backed pending-change recovery, interrupted-file retries, private page/view state, and safeguards for shared undo and concurrent page deletions.
+- Documented the two-user workflow, shared-folder layout, conflict rules, browser requirements, recovery behavior, and validation limits in the README.
+
 ## v1.1.11 - 2026-10-16
 
 - Updated the displayed NetDraw version to `v1.1.11`.
