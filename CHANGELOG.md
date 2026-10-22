@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.13 - 2026-10-22
+
+- Fixed all four object order actions to move items across nodes, connections, zones, and swimlanes in both application versions.
+- Preserved drawing order in save/load, undo/redo, shared-folder updates, and image/video exports.
+
 ## v1.1.12 - 2026-10-17
 
 - Updated the displayed version in the original application and new shared-folder copy to `v1.1.12`.

@@ -343,7 +343,7 @@
         <circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/>
         <path d="M7 7.5 10.5 16M17 7.5 13.5 16M7.6 6h8.8"/>
       </svg>
-        NetDraw <span class="sub">v1.1.12</span>
+        NetDraw <span class="sub">v1.1.13</span>
     </div>
 
     <div class="tgroup">
@@ -458,10 +458,8 @@
         </defs>
         <rect id="gridRect" x="0" y="0" width="100%" height="100%" fill="url(#gridPat)"/>
         <g id="world">
-          <g id="zonesLayer"></g>
-          <g id="edgesLayer"></g>
+          <g id="objectsLayer"></g>
           <g id="tempLayer"></g>
-          <g id="nodesLayer"></g>
           <g id="uiLayer"></g>
         </g>
       </svg>
@@ -8497,7 +8495,7 @@ let editTarget = null;
 /* ---------- dom ---------- */
 const $ = id => document.getElementById(id);
 const svg = $("canvas"), worldG = $("world"),
-      edgesLayer = $("edgesLayer"), nodesLayer = $("nodesLayer"), zonesLayer = $("zonesLayer"),
+      objectsLayer = $("objectsLayer"),
       tempLayer = $("tempLayer"), uiLayer = $("uiLayer"),
       gridRect = $("gridRect"), propsEl = $("props"),
       labelEditor = $("labelEditor"), ghost = $("dragGhost");
@@ -8602,7 +8600,7 @@ function normalizeState(doc){
       arrows: ["none","start","end","both"].includes(e.arrows) ? e.arrows : "none"
     };
   });
-  return {nodes, edges, zones, journey:normalizeJourney(doc.journey)};
+  return {nodes, edges, zones, drawOrder:normalizeIdList(doc.drawOrder), journey:normalizeJourney(doc.journey)};
 }
 function normalizeView(v){
   return v && finiteNum(v.x) && finiteNum(v.y) && finiteNum(v.k)
@@ -8854,7 +8852,7 @@ function applyTheme(next){
     icon.innerHTML = theme === "light" ? THEMES.light.icon : THEMES.dark.icon;
   }
   try{ localStorage.setItem(THEME_KEY, theme); }catch(_){}
-  if(nodesLayer && nodesLayer.childNodes.length) renderAll();
+  if(objectsLayer && objectsLayer.childNodes.length) renderAll();
 }
 
 /* ---------- rendering ---------- */
@@ -9176,7 +9174,7 @@ function ensureSneak(){
     // setInterval, not rAF: keeps the walk moving even when the tab is unfocused (matches recording)
     sneakTimer = setInterval(() => {
       const t = performance.now() / 1000;
-      edgesLayer.querySelectorAll(".footsteps").forEach(fs => sneakStep(fs, t));
+      objectsLayer.querySelectorAll(".footsteps").forEach(fs => sneakStep(fs, t));
     }, 33);
   } else if(!has && sneakTimer){
     clearInterval(sneakTimer); sneakTimer = null;
@@ -9291,32 +9289,26 @@ function renderZone(z){
   return g;
 }
 
-function renderAll(){
-  zonesLayer.innerHTML = "";
-  for(const z of state.zones){
-    const s = elemState(z.id);
-    if(s === "hidden") continue;
-    const g = renderZone(z);
-    if(s === "dim") dimGroup(g);
-    zonesLayer.appendChild(g);
+// Older diagrams keep their zones, connections, then nodes stacking by default.
+// Ignore deleted/duplicate IDs and include newly added objects in the order.
+function orderedObjects(doc = state){
+  const objects = new Map();
+  for(const kind of ["zones", "edges", "nodes"]){
+    for(const item of doc[kind]) objects.set(item.id, {id:item.id, kind, item});
   }
-  edgesLayer.innerHTML = "";
-  for(const e of state.edges){
-    if(elemState(e.a) === "hidden" || elemState(e.b) === "hidden") continue;
-    const s = elemState(e.id);
+  const ids = new Set([...(doc.drawOrder || []), ...objects.keys()]);
+  return [...ids].filter(id => objects.has(id)).map(id => objects.get(id));
+}
+function renderAll(){
+  objectsLayer.innerHTML = "";
+  for(const {id, kind, item} of orderedObjects()){
+    if(kind === "edges" && (elemState(item.a) === "hidden" || elemState(item.b) === "hidden")) continue;
+    const s = elemState(id);
     if(s === "hidden") continue;
-    const g = renderEdge(e);
+    const g = kind === "zones" ? renderZone(item) : kind === "edges" ? renderEdge(item) : renderNode(item);
     if(!g) continue;
     if(s === "dim") dimGroup(g);
-    edgesLayer.appendChild(g);
-  }
-  nodesLayer.innerHTML = "";
-  for(const n of state.nodes){
-    const s = elemState(n.id);
-    if(s === "hidden") continue;
-    const g = renderNode(n);
-    if(s === "dim") dimGroup(g);
-    nodesLayer.appendChild(g);
+    objectsLayer.appendChild(g);
   }
   updateProps();
   updateToolbar();
@@ -9717,11 +9709,9 @@ function reorderList(list, mode){
 }
 function reorderSelection(mode){
   if(!selection.size) return;
-  const zonesChanged = reorderList(state.zones, mode);
-  const edgesChanged = reorderList(state.edges, mode);
-  const nodesChanged = reorderList(state.nodes, mode);
-  const changed = zonesChanged || edgesChanged || nodesChanged;
-  if(!changed) return;
+  const objects = orderedObjects();
+  if(!reorderList(objects, mode)) return;
+  state.drawOrder = objects.map(x => x.id);
   commit();
   renderAll();
 }
@@ -9896,12 +9886,12 @@ function markLinkTarget(id){
   curLinkTarget = id;
   if(hadTarget) renderAll();
   if(id === null) return;
-  for(const g of nodesLayer.querySelectorAll("g.nodeg")){
+  for(const g of objectsLayer.querySelectorAll("g.nodeg")){
     const card = g.querySelector(".card");
     const isTarget = g.getAttribute("data-node") === id;
     if(isTarget){ card.setAttribute("stroke", "#7dd3fc"); card.setAttribute("stroke-width", 2); }
   }
-  for(const g of zonesLayer.querySelectorAll("g.zoneg")){
+  for(const g of objectsLayer.querySelectorAll("g.zoneg")){
     const frame = g.querySelector("rect");
     const isTarget = g.getAttribute("data-zone") === id;
     if(isTarget){ frame.setAttribute("stroke", "#7dd3fc"); frame.setAttribute("stroke-width", 2.4); }
@@ -10794,9 +10784,7 @@ function buildDiagramSVG(t){
   const out = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x0} ${y0} ${w} ${h}" font-family="${FONT_STACK}">
 ${defs}
 <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="${THEMES[theme].bg}"/>
-${cloneLayerMarkup(zonesLayer, t)}
-${cloneLayerMarkup(edgesLayer, t)}
-${cloneLayerMarkup(nodesLayer, t)}
+${cloneLayerMarkup(objectsLayer, t)}
 </svg>`;
   return {out, w, h};
 }
@@ -10815,10 +10803,8 @@ ${defs}
 <rect width="${cssW}" height="${cssH}" fill="${THEMES[theme].bg}"/>
 ${gridOn ? `<rect width="${cssW}" height="${cssH}" fill="url(#gridPat)"/>` : ""}
 <g transform="translate(${view.x} ${view.y}) scale(${view.k})">
-${cloneLayerMarkup(zonesLayer, t)}
-${cloneLayerMarkup(edgesLayer, t)}
+${cloneLayerMarkup(objectsLayer, t)}
 ${cloneLayerMarkup(tempLayer, t)}
-${cloneLayerMarkup(nodesLayer, t)}
 ${cloneLayerMarkup(uiLayer, t)}
 </g>
 </svg>`;

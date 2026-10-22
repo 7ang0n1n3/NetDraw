@@ -1,6 +1,6 @@
 # NetDraw
 
-Current version: `v1.1.12`
+Current version: `v1.1.13`
 
 NetDraw is a self-contained browser-based network diagram editor. The original app lives in `NetDraw.html` and runs locally without a build step or server. `NetDraw-shared-folder.html` is a standalone alternative that lets multiple clients exchange diagram updates through a shared folder.
 
@@ -122,7 +122,7 @@ Select a node to show corner resize handles, then drag a handle to resize the ob
 
 The Effects / status list includes operational states such as `Down`, `Missing`, and `Unavailable`, along with security-focused states.
 
-Select a node, zone, swimlane, or connection to move it backward, forward, to the back, or to the front from the properties panel. Ordering is applied inside the selected item's drawing layer.
+Select a node, zone, swimlane, or connection to move it backward, forward, to the back, or to the front from the properties panel. Ordering applies across all object types, so connections, nodes, zones, and swimlanes can move in front of or behind one another. The order is preserved in saved diagrams and exports.
 
 ## AWS
 
@@ -179,3 +179,13 @@ Use `Journey` to create a guided walkthrough for the current page. Add steps, pi
 - `README.md`: Project usage notes.
 - `CHANGELOG.md`: Notable changes.
 - `LICENSE`: Project license.
+
+## Validation
+
+Run the object ordering browser regression checks with Python 3 and Chromium installed:
+
+```bash
+python3 tests/object-order.py
+```
+
+The checks cover both app versions, all four ordering actions across object types, keyboard shortcuts, undo/redo, save/load, export stacking, and shared-folder drawing-order updates.
